@@ -1,0 +1,2553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>G.O.A.T.S — Cabras bom de bola</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<style>
+  /* ===== ESTILOS ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --orange: #FF6B1A;
+    --orange-glow: rgba(255,107,26,0.4);
+    --neon-blue: #00D4FF;
+    --neon-green: #39FF14;
+    --dark-bg: #07071a;
+    --card-bg: rgba(255,255,255,0.04);
+    --card-border: rgba(255,255,255,0.08);
+    --text-primary: #ffffff;
+    --text-muted: rgba(255,255,255,0.5);
+    --court-line: rgba(255,255,255,0.06);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--dark-bg);
+    color: var(--text-primary);
+    font-family: 'Rajdhani', sans-serif;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .screen {
+    position: fixed; inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    background: var(--dark-bg);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .screen.active { display: flex; }
+
+  .court-bg {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 100%, rgba(255,107,26,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 100% 60% at 50% 50%, rgba(0,212,255,0.03) 0%, transparent 70%),
+      var(--dark-bg);
+  }
+  .court-bg::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--court-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--court-line) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .court-bg::after {
+    content: '';
+    position: absolute;
+    width: 200px; height: 200px;
+    border: 1px solid var(--court-line);
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* LOGIN SCREEN */
+  #screen-login {
+    justify-content: center;
+    gap: 0;
+    padding: 40px 24px;
+  }
+
+  .logo-block {
+    text-align: center;
+    margin-bottom: 40px;
+    position: relative; z-index: 1;
+  }
+  .logo-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 52px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: var(--orange);
+    text-shadow: 0 0 30px var(--orange-glow), 0 0 60px var(--orange-glow);
+    line-height: 1;
+  }
+  .logo-sub {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 6px;
+    color: var(--neon-blue);
+    margin-top: 4px;
+    opacity: 0.8;
+  }
+  .ball-icon {
+    font-size: 72px;
+    display: block;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 4px 16px var(--orange-glow));
+  }
+
+  .login-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 340px;
+    position: relative; z-index: 1;
+    backdrop-filter: blur(12px);
+  }
+  .login-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .player-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .player-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .player-btn.selected {
+    background: rgba(255,107,26,0.15);
+    border-color: var(--orange);
+    box-shadow: 0 0 16px var(--orange-glow);
+  }
+  .player-btn:active { transform: scale(0.95); }
+  .player-avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin: 0 auto 6px;
+    font-weight: 700;
+    overflow: hidden;
+  }
+  .player-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .avatar-g { background: linear-gradient(135deg, #FF6B1A, #FF3A00); }
+  .avatar-j { background: linear-gradient(135deg, #00D4FF, #0080FF); }
+  .avatar-r { background: linear-gradient(135deg, #39FF14, #00CC00); }
+  .player-name {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+  }
+
+  .pin-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .pin-dot {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+  .pin-dot.filled {
+    background: var(--orange);
+    border-color: var(--orange);
+    box-shadow: 0 0 8px var(--orange-glow);
+  }
+
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .num-btn {
+    height: 52px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .num-btn:active {
+    background: rgba(255,107,26,0.2);
+    border-color: var(--orange);
+    transform: scale(0.94);
+  }
+  .num-btn.del {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .btn-primary {
+    width: 100%;
+    height: 52px;
+    background: linear-gradient(135deg, #FF6B1A, #FF3A00);
+    border: none;
+    border-radius: 14px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(255,107,26,0.3);
+  }
+  .btn-primary:active { transform: scale(0.97); opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .error-msg {
+    color: #FF4444;
+    font-size: 13px;
+    text-align: center;
+    margin-top: 10px;
+    min-height: 18px;
+  }
+
+  /* PERFIL EDIT SCREEN */
+  #screen-profile-edit {
+    padding: 50px 20px 30px;
+  }
+  .profile-edit-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 340px;
+    position: relative; z-index: 1;
+    backdrop-filter: blur(12px);
+    text-align: center;
+  }
+  .profile-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #FF6B1A, #FF3A00);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: 700;
+    overflow: hidden;
+    position: relative;
+  }
+  .profile-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .btn-upload {
+    background: rgba(255,107,26,0.2);
+    border: 1px solid var(--orange);
+    border-radius: 12px;
+    padding: 12px 20px;
+    color: var(--orange);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    margin: 10px 0;
+    width: 100%;
+  }
+  .btn-upload:active { transform: scale(0.96); }
+  .profile-name-input {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  /* MENU SCREEN */
+  #screen-menu {
+    padding: 0 20px 30px;
+  }
+  .menu-header {
+    width: 100%;
+    padding: 50px 0 24px;
+    text-align: center;
+    position: relative; z-index: 1;
+  }
+  .menu-greeting {
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .menu-player-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    background: linear-gradient(135deg, #FF6B1A, #FF3A00);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 700;
+    overflow: hidden;
+    cursor: pointer;
+    border: 3px solid var(--orange);
+    box-shadow: 0 0 20px var(--orange-glow);
+  }
+  .menu-player-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .menu-player-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    letter-spacing: 3px;
+    color: var(--orange);
+    text-shadow: 0 0 20px var(--orange-glow);
+    line-height: 1.1;
+  }
+  .menu-stats-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto 24px;
+    position: relative; z-index: 1;
+  }
+  .mini-stat {
+    flex: 1;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .mini-stat-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--neon-blue);
+  }
+  .mini-stat-label {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .menu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+    position: relative; z-index: 1;
+  }
+  .menu-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 18px;
+    padding: 20px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .menu-card:active { transform: scale(0.96); }
+  .menu-card.primary {
+    grid-column: span 2;
+    background: linear-gradient(135deg, rgba(255,107,26,0.2), rgba(255,58,0,0.1));
+    border-color: rgba(255,107,26,0.3);
+    padding: 24px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .menu-card-icon { font-size: 36px; }
+  .menu-card.primary .menu-card-icon { font-size: 52px; }
+  .menu-card-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-top: 8px;
+  }
+  .menu-card.primary .menu-card-title { font-size: 32px; color: var(--orange); margin-top: 0; }
+  .menu-card-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .menu-logout {
+    width: 100%;
+    max-width: 360px;
+    margin: 16px auto 0;
+    background: none;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    cursor: pointer;
+    position: relative; z-index: 1;
+  }
+
+  /* GAME SCREEN */
+  #screen-game {
+    overflow: hidden;
+  }
+  .game-hud {
+    width: 100%;
+    padding: 44px 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative; z-index: 10;
+    background: linear-gradient(to bottom, rgba(7,7,26,0.95), transparent);
+  }
+  .hud-score-block {
+    flex: 1;
+    text-align: center;
+  }
+  .hud-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .hud-score {
+    font-family: 'Orbitron', monospace;
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--orange);
+    text-shadow: 0 0 20px var(--orange-glow);
+    line-height: 1;
+  }
+  .hud-timer-block {
+    flex: 1;
+    text-align: center;
+  }
+  .hud-timer {
+    font-family: 'Orbitron', monospace;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--neon-blue);
+    line-height: 1;
+  }
+  .hud-timer.urgent { color: #FF4444; animation: pulse-timer 0.5s infinite alternate; }
+  @keyframes pulse-timer { to { opacity: 0.6; } }
+  .hud-combo-block {
+    flex: 1;
+    text-align: center;
+  }
+  .hud-combo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--neon-green);
+    text-shadow: 0 0 12px rgba(57,255,20,0.5);
+    opacity: 0;
+    transition: opacity 0.3s;
+    line-height: 1;
+  }
+  .hud-combo.visible { opacity: 1; }
+  .hud-phase {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  #game-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    touch-action: none;
+  }
+
+  .game-back {
+    position: absolute;
+    top: 46px; left: 12px;
+    background: rgba(7,7,26,0.7);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+    cursor: pointer;
+    z-index: 20;
+    letter-spacing: 0.5px;
+  }
+
+  /* RESULT SCREEN */
+  #screen-result {
+    justify-content: center;
+    padding: 40px 24px;
+    gap: 0;
+  }
+  .result-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 56px;
+    letter-spacing: 4px;
+    text-align: center;
+    color: var(--orange);
+    text-shadow: 0 0 30px var(--orange-glow);
+    position: relative; z-index: 1;
+    margin-bottom: 4px;
+  }
+  .result-subtitle {
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    position: relative; z-index: 1;
+  }
+  .result-score-card {
+    background: linear-gradient(135deg, rgba(255,107,26,0.15), rgba(255,58,0,0.05));
+    border: 1px solid rgba(255,107,26,0.3);
+    border-radius: 24px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 340px;
+    text-align: center;
+    margin-bottom: 16px;
+    position: relative; z-index: 1;
+  }
+  .result-big-score {
+    font-family: 'Orbitron', monospace;
+    font-size: 72px;
+    font-weight: 900;
+    color: var(--orange);
+    text-shadow: 0 0 40px var(--orange-glow);
+    line-height: 1;
+  }
+  .result-score-label { font-size: 12px; letter-spacing: 2px; color: var(--text-muted); margin-top: 4px; }
+  .result-stats-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    max-width: 340px;
+    margin-bottom: 16px;
+    position: relative; z-index: 1;
+  }
+  .result-stat-card {
+    flex: 1;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .result-stat-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--neon-blue);
+  }
+  .result-stat-label { font-size: 10px; letter-spacing: 1px; color: var(--text-muted); margin-top: 2px; }
+  .result-record {
+    font-size: 14px;
+    color: var(--neon-green);
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    position: relative; z-index: 1;
+    min-height: 20px;
+  }
+  .result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 340px;
+    position: relative; z-index: 1;
+  }
+  .btn-secondary {
+    height: 48px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-secondary:active { transform: scale(0.97); background: rgba(255,255,255,0.08); }
+
+  /* RANKING SCREEN */
+  #screen-ranking {
+    padding: 50px 20px 30px;
+  }
+  .screen-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 4px;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 28px;
+    position: relative; z-index: 1;
+  }
+  .ranking-list {
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative; z-index: 1;
+  }
+  .rank-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 18px;
+    padding: 16px 18px;
+    transition: all 0.3s;
+  }
+  .rank-card.gold { border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.05); }
+  .rank-card.silver { border-color: rgba(192,192,192,0.3); background: rgba(192,192,192,0.03); }
+  .rank-card.bronze { border-color: rgba(205,127,50,0.3); background: rgba(205,127,50,0.03); }
+  .rank-pos {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 900;
+    width: 30px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .rank-card.gold .rank-pos { color: #FFD700; }
+  .rank-card.silver .rank-pos { color: #C0C0C0; }
+  .rank-card.bronze .rank-pos { color: #CD7F32; }
+  .rank-avatar {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px; font-weight: 700;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .rank-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .rank-info { flex: 1; }
+  .rank-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  .rank-details {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+  .rank-score {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--orange);
+    flex-shrink: 0;
+  }
+  .ranking-phase-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 16px;
+    letter-spacing: 1px;
+    position: relative; z-index: 1;
+  }
+
+  /* PROFILE SCREEN */
+  #screen-profile {
+    padding: 50px 20px 30px;
+  }
+  .profile-hero {
+    text-align: center;
+    margin-bottom: 24px;
+    position: relative; z-index: 1;
+    cursor: pointer;
+  }
+  .profile-avatar {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px; font-weight: 700;
+    margin: 0 auto 12px;
+    border: 3px solid rgba(255,107,26,0.5);
+    box-shadow: 0 0 24px var(--orange-glow);
+    overflow: hidden;
+  }
+  .profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .profile-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    letter-spacing: 3px;
+    color: var(--orange);
+  }
+  .profile-rank-badge {
+    display: inline-block;
+    background: rgba(255,107,26,0.15);
+    border: 1px solid rgba(255,107,26,0.3);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: var(--orange);
+    margin-top: 4px;
+  }
+  .profile-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto 16px;
+    position: relative; z-index: 1;
+  }
+  .profile-stat {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 16px 14px;
+  }
+  .profile-stat-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--neon-blue);
+    line-height: 1;
+  }
+  .profile-stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  .medals-section {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+    position: relative; z-index: 1;
+  }
+  .medals-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .medals-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .medal {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s;
+  }
+  .medal.earned {
+    background: rgba(255,215,0,0.08);
+    border-color: rgba(255,215,0,0.3);
+    color: #FFD700;
+  }
+  .medal-icon { font-size: 18px; }
+
+  /* HISTORY SCREEN */
+  #screen-history {
+    padding: 50px 20px 30px;
+  }
+  .history-list {
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative; z-index: 1;
+  }
+  .history-card {
+    display: flex;
+    align-items: center;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    gap: 14px;
+  }
+  .history-date {
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 70px;
+    flex-shrink: 0;
+  }
+  .history-info { flex: 1; }
+  .history-player {
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+  }
+  .history-details {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .history-score {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--orange);
+  }
+
+  .back-btn {
+    position: absolute;
+    top: 46px; left: 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    z-index: 10;
+    letter-spacing: 0.5px;
+  }
+  .back-btn:active { opacity: 0.7; }
+
+  /* EFFECTS */
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    font-size: 16px;
+    z-index: 999;
+    animation: particle-up 0.8s ease-out forwards;
+  }
+  @keyframes particle-up {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-80px) scale(0); opacity: 0; }
+  }
+
+  .score-popup {
+    position: fixed;
+    pointer-events: none;
+    z-index: 999;
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 900;
+    animation: score-float 1s ease-out forwards;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .score-popup.plus2 { color: #fff; }
+  .score-popup.plus3 { color: #FFD700; font-size: 28px; }
+  .score-popup.combo { color: var(--neon-green); font-size: 32px; }
+  @keyframes score-float {
+    0% { transform: translateY(0) scale(1.3); opacity: 1; }
+    100% { transform: translateY(-100px) scale(0.8); opacity: 0; }
+  }
+
+  .combo-flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 90;
+    animation: combo-flash-anim 0.4s ease-out forwards;
+  }
+  @keyframes combo-flash-anim {
+    0% { background: rgba(57,255,20,0.15); }
+    100% { background: transparent; }
+  }
+
+  .phase-banner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    text-align: center;
+    z-index: 200;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.3s;
+  }
+  .phase-banner.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .phase-banner-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    letter-spacing: 3px;
+    color: var(--neon-blue);
+  }
+  .phase-banner-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 80px;
+    color: var(--orange);
+    text-shadow: 0 0 40px var(--orange-glow);
+    line-height: 1;
+  }
+
+  .toast {
+    position: fixed;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: rgba(7,7,26,0.95);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--neon-blue);
+    z-index: 500;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .connection-status {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    background: rgba(0,0,0,0.6);
+    z-index: 1000;
+    pointer-events: none;
+  }
+  .connection-status.online { color: #39FF14; }
+  .connection-status.offline { color: #FF4444; }
+</style>
+</head>
+<body>
+
+<div class="court-bg"></div>
+
+<!-- LOGIN SCREEN -->
+<div id="screen-login" class="screen active">
+  <div class="logo-block">
+    <span class="ball-icon">🏀</span>
+    <div class="logo-title">G.O.A.T.S</div>
+    <div class="logo-sub">Cabras bom de bola</div>
+  </div>
+  <div class="login-card">
+    <span class="login-label">Selecione seu perfil</span>
+    <div class="player-grid">
+      <div class="player-btn" data-player="gabriel">
+        <div class="player-avatar avatar-g" id="avatar-gabriel">G</div>
+        <div class="player-name">Gabriel</div>
+      </div>
+      <div class="player-btn" data-player="joao">
+        <div class="player-avatar avatar-j" id="avatar-joao">J</div>
+        <div class="player-name">João</div>
+      </div>
+      <div class="player-btn" data-player="roberto">
+        <div class="player-avatar avatar-r" id="avatar-roberto">R</div>
+        <div class="player-name">Roberto</div>
+      </div>
+    </div>
+    <span class="login-label">PIN</span>
+    <div class="pin-row">
+      <div class="pin-dot" id="pin0"></div>
+      <div class="pin-dot" id="pin1"></div>
+      <div class="pin-dot" id="pin2"></div>
+      <div class="pin-dot" id="pin3"></div>
+    </div>
+    <div class="numpad">
+      <button class="num-btn" data-num="1">1</button>
+      <button class="num-btn" data-num="2">2</button>
+      <button class="num-btn" data-num="3">3</button>
+      <button class="num-btn" data-num="4">4</button>
+      <button class="num-btn" data-num="5">5</button>
+      <button class="num-btn" data-num="6">6</button>
+      <button class="num-btn" data-num="7">7</button>
+      <button class="num-btn" data-num="8">8</button>
+      <button class="num-btn" data-num="9">9</button>
+      <button class="num-btn del" data-del>⌫</button>
+      <button class="num-btn" data-num="0">0</button>
+      <button class="num-btn" style="opacity:0; pointer-events:none"></button>
+    </div>
+    <button class="btn-primary" id="btn-login" disabled>ENTRAR</button>
+    <div class="error-msg" id="login-error"></div>
+    <div id="login-loading" style="display:none; text-align:center; margin-top:10px;">⏳ Conectando...</div>
+  </div>
+</div>
+
+<!-- PROFILE EDIT SCREEN -->
+<div id="screen-profile-edit" class="screen">
+  <div class="court-bg"></div>
+  <button class="back-btn" id="back-profile-edit">← Voltar</button>
+  <div class="profile-edit-card">
+    <div class="profile-preview" id="profile-preview">
+      <span id="preview-text">G</span>
+      <img id="preview-img" style="display:none" class="profile-preview-img">
+    </div>
+    <button class="btn-upload" id="btn-upload-photo">📸 Escolher foto da galeria</button>
+    <input type="file" id="photo-input" accept="image/*" style="display:none">
+    <input type="text" class="profile-name-input" id="profile-name-edit" placeholder="Seu nome" maxlength="20">
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button class="btn-primary" id="btn-save-profile" style="flex:1">SALVAR</button>
+      <button class="btn-secondary" id="btn-cancel-edit" style="flex:1">CANCELAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- MENU SCREEN -->
+<div id="screen-menu" class="screen">
+  <div class="court-bg"></div>
+  <div class="menu-header">
+    <div class="menu-greeting">Bem-vindo de volta,</div>
+    <div class="menu-player-avatar" id="menu-avatar-click">
+      <div id="menu-avatar-initial">G</div>
+      <img id="menu-avatar-img" style="display:none">
+    </div>
+    <div class="menu-player-name" id="menu-player-display">GABRIEL</div>
+  </div>
+  <div class="menu-stats-row">
+    <div class="mini-stat"><div class="mini-stat-val" id="menu-best">0</div><div class="mini-stat-label">Recorde</div></div>
+    <div class="mini-stat"><div class="mini-stat-val" id="menu-games">0</div><div class="mini-stat-label">Partidas</div></div>
+    <div class="mini-stat"><div class="mini-stat-val" id="menu-phase">1</div><div class="mini-stat-label">Fase</div></div>
+  </div>
+  <div class="menu-grid">
+    <div class="menu-card primary" id="btn-startgame"><div class="menu-card-icon">🏀</div><div><div class="menu-card-title">JOGAR</div><div class="menu-card-sub" id="menu-phase-text">Fase 1 — Cesta parada</div></div></div>
+    <div class="menu-card" id="btn-ranking"><div class="menu-card-icon">🏆</div><div class="menu-card-title">RANKING</div><div class="menu-card-sub">Top 3 amigos</div></div>
+    <div class="menu-card" id="btn-profile"><div class="menu-card-icon">👤</div><div class="menu-card-title">PERFIL</div><div class="menu-card-sub">Suas stats</div></div>
+    <div class="menu-card" id="btn-history"><div class="menu-card-icon">📋</div><div class="menu-card-title">HISTÓRICO</div><div class="menu-card-sub">Partidas</div></div>
+  </div>
+  <button class="menu-logout" id="btn-logout">Sair da conta</button>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="screen-game" class="screen">
+  <canvas id="game-canvas"></canvas>
+  <div class="game-hud">
+    <button class="game-back" id="btn-exitgame">← Sair</button>
+    <div class="hud-timer-block"><div class="hud-label">TEMPO</div><div class="hud-timer" id="hud-timer">60</div></div>
+    <div class="hud-score-block"><div class="hud-label">SCORE</div><div class="hud-score" id="hud-score">0</div></div>
+    <div class="hud-combo-block"><div class="hud-combo" id="hud-combo">COMBO!</div><div class="hud-phase" id="hud-phase">FASE 1</div></div>
+  </div>
+  <div class="phase-banner" id="phase-banner"><div class="phase-banner-title">FASE</div><div class="phase-banner-num" id="phase-banner-num">1</div></div>
+</div>
+
+<!-- RESULT SCREEN -->
+<div id="screen-result" class="screen">
+  <div class="court-bg"></div>
+  <div class="result-title">PARTIDA ENCERRADA</div>
+  <div class="result-subtitle" id="result-player-name">GABRIEL</div>
+  <div class="result-score-card"><div class="result-big-score" id="result-score">0</div><div class="result-score-label">PONTOS</div></div>
+  <div class="result-stats-row">
+    <div class="result-stat-card"><div class="result-stat-val" id="result-baskets">0</div><div class="result-stat-label">Cestas</div></div>
+    <div class="result-stat-card"><div class="result-stat-val" id="result-perfect">0</div><div class="result-stat-label">Perfeitas</div></div>
+    <div class="result-stat-card"><div class="result-stat-val" id="result-best-combo">0x</div><div class="result-stat-label">Melhor Combo</div></div>
+  </div>
+  <div class="result-record" id="result-record"></div>
+  <div class="result-actions">
+    <button class="btn-primary" id="btn-playagain">JOGAR DE NOVO</button>
+    <button class="btn-secondary" id="btn-resultranking">VER RANKING</button>
+    <button class="btn-secondary" id="btn-resultmenu">MENU</button>
+  </div>
+</div>
+
+<!-- RANKING SCREEN -->
+<div id="screen-ranking" class="screen">
+  <div class="court-bg"></div>
+  <button class="back-btn" id="back-ranking">← Voltar</button>
+  <div class="screen-title">🏆 RANKING ONLINE</div>
+  <div class="ranking-list" id="ranking-list"></div>
+  <div class="ranking-phase-note">Ranking em tempo real 🔥</div>
+</div>
+
+<!-- PROFILE SCREEN -->
+<div id="screen-profile" class="screen">
+  <div class="court-bg"></div>
+  <button class="back-btn" id="back-profile">← Voltar</button>
+  <div class="profile-hero" id="edit-profile-trigger">
+    <div class="profile-avatar" id="profile-avatar">
+      <span id="profile-avatar-text">G</span>
+      <img id="profile-avatar-img" style="display:none">
+    </div>
+    <div class="profile-name" id="profile-name">GABRIEL</div>
+    <div class="profile-rank-badge" id="profile-rank-badge">#1 do Grupo</div>
+    <div style="font-size:12px; color:rgba(255,255,255,0.4); margin-top:8px;">👆 Clique para editar perfil</div>
+  </div>
+  <div class="profile-stats-grid">
+    <div class="profile-stat"><div class="profile-stat-val" id="p-best">0</div><div class="profile-stat-label">Recorde</div></div>
+    <div class="profile-stat"><div class="profile-stat-val" id="p-games">0</div><div class="profile-stat-label">Partidas</div></div>
+    <div class="profile-stat"><div class="profile-stat-val" id="p-baskets">0</div><div class="profile-stat-label">Total Cestas</div></div>
+    <div class="profile-stat"><div class="profile-stat-val" id="p-phase">1</div><div class="profile-stat-label">Fase Atual</div></div>
+    <div class="profile-stat"><div class="profile-stat-val" id="p-streak">0x</div><div class="profile-stat-label">Melhor Combo</div></div>
+    <div class="profile-stat"><div class="profile-stat-val" id="p-perfect">0</div><div class="profile-stat-label">Cestas Perf.</div></div>
+  </div>
+  <div class="medals-section"><div class="medals-title">CONQUISTAS</div><div class="medals-row" id="medals-row"></div></div>
+  <!-- Botão Voltar ao Menu -->
+  <button class="menu-logout" id="btn-back-to-menu" style="margin-top: 20px; background: var(--card-bg); border: 1px solid var(--orange); color: var(--orange);">🏠 Voltar ao Menu</button>
+</div>
+
+<!-- HISTORY SCREEN -->
+<div id="screen-history" class="screen">
+  <div class="court-bg"></div>
+  <button class="back-btn" id="back-history">← Voltar</button>
+  <div class="screen-title">📋 HISTÓRICO</div>
+  <div class="history-list" id="history-list"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="connection-status" id="connection-status">📱 Iniciando...</div>
+
+<script>
+// ============================================================
+// FIREBASE REALTIME DATABASE - CONFIGURAÇÃO
+// ============================================================
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBAXceKJ0EG7rdlfGbn3GtbmxWvRfyRmbA",
+  authDomain: "goats-227d4.firebaseapp.com",
+  databaseURL: "https://goats-227d4-default-rtdb.firebaseio.com",
+  projectId: "goats-227d4",
+  storageBucket: "goats-227d4.firebasestorage.app",
+  messagingSenderId: "609952887912",
+  appId: "1:609952887912:web:3252b4be15ce581fa177dd"
+};
+
+// Inicialização segura
+let firebaseApp = null;
+let db = null;
+let firebaseReady = false;
+
+try {
+  firebaseApp = firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  firebaseReady = true;
+  console.log('✅ Firebase inicializado com sucesso!');
+  document.getElementById('connection-status').textContent = '🔥 Firebase Online';
+  document.getElementById('connection-status').classList.add('online');
+  document.getElementById('connection-status').classList.remove('offline');
+} catch (error) {
+  console.error('❌ Erro ao inicializar Firebase:', error);
+  firebaseReady = false;
+  document.getElementById('connection-status').textContent = '📱 Modo Local';
+  document.getElementById('connection-status').classList.add('offline');
+}
+
+// ============================================================
+// DATA LAYER (Local Storage como fallback)
+// ============================================================
+const PLAYERS = {
+  gabriel: { name: 'Gabriel', pin: '1111', avatar: 'G', avatarClass: 'avatar-g', color: '#FF6B1A', userId: null },
+  joao:    { name: 'João',    pin: '2222', avatar: 'J', avatarClass: 'avatar-j', color: '#00D4FF', userId: null },
+  roberto: { name: 'Roberto', pin: '3333', avatar: 'R', avatarClass: 'avatar-r', color: '#39FF14', userId: null }
+};
+
+const PHASES = [
+  { name: 'Cesta parada',       hoopMove: false, timeLimit: 60 },
+  { name: 'Cesta se move',      hoopMove: true,  timeLimit: 60 },
+  { name: 'Tempo reduzido',     hoopMove: true,  timeLimit: 45 },
+  { name: 'Distância maior',    hoopMove: true,  timeLimit: 50 },
+  { name: 'Modo obstáculo',     hoopMove: true,  timeLimit: 45, hasObstacle: true }
+];
+
+const MEDALS_DEF = [
+  { id: 'first_basket', icon: '🎯', label: 'Primeira Cesta', check: (s) => s.totalBaskets >= 1 },
+  { id: 'perfect_3',    icon: '⭐', label: '3 Perfeitas',    check: (s) => s.totalPerfect >= 3 },
+  { id: 'combo5',       icon: '🔥', label: 'Combo x5',       check: (s) => s.bestCombo >= 5 },
+  { id: 'score100',     icon: '💯', label: '100 Pontos',     check: (s) => s.bestScore >= 100 },
+  { id: 'score300',     icon: '🚀', label: '300 Pontos',     check: (s) => s.bestScore >= 300 },
+  { id: 'phase3',       icon: '🏅', label: 'Fase 3',         check: (s) => s.phase >= 3 }
+];
+
+// Funções de localStorage (fallback)
+function getLocalData() {
+  return JSON.parse(localStorage.getItem('goats_local_data') || '{}');
+}
+
+function saveLocalData(data) {
+  localStorage.setItem('goats_local_data', JSON.stringify(data));
+}
+
+function getPlayerLocalData(playerKey) {
+  const all = getLocalData();
+  return all[playerKey] || { bestScore: 0, games: 0, totalBaskets: 0, totalPerfect: 0, bestCombo: 0, phase: 1, medals: [], history: [], photoURL: null, displayName: PLAYERS[playerKey].name };
+}
+
+function savePlayerLocalData(playerKey, data) {
+  const all = getLocalData();
+  all[playerKey] = data;
+  saveLocalData(all);
+}
+
+// ============================================================
+// FUNÇÕES DE RANKING E PERFIL (SINCRONIZADAS)
+// ============================================================
+
+// Salvar pontuação no Firebase
+async function salvarRankingFirebase(playerId, score, combo, phase) {
+  if (!firebaseReady || !db) return false;
+  
+  try {
+    const playerRef = db.ref(`ranking/${playerId}`);
+    const snapshot = await playerRef.once('value');
+    const currentData = snapshot.val() || {};
+    const currentBest = currentData.bestScore || 0;
+    
+    if (score > currentBest) {
+      await playerRef.update({
+        bestScore: score,
+        bestCombo: combo,
+        phase: phase,
+        updatedAt: Date.now(),
+        name: PLAYERS[playerId]?.name || playerId,
+        photoURL: currentPlayerData.photoURL || null,
+        displayName: currentPlayerData.displayName || PLAYERS[playerId]?.name
+      });
+      console.log(`🏆 Ranking atualizado: ${playerId} - ${score} pontos`);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Erro ao salvar no Firebase:', error);
+    return false;
+  }
+}
+
+// Escutar ranking em tempo real
+function escutarRanking() {
+  if (!firebaseReady || !db) {
+    renderRankingLocal();
+    return;
+  }
+  
+  const rankingRef = db.ref('ranking');
+  
+  rankingRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      renderRankingLocal();
+      return;
+    }
+    
+    const players = [];
+    for (const [id, info] of Object.entries(data)) {
+      players.push({
+        id: id,
+        name: info.displayName || info.name || id,
+        bestScore: info.bestScore || 0,
+        bestCombo: info.bestCombo || 0,
+        phase: info.phase || 1,
+        photoURL: info.photoURL || null
+      });
+    }
+    
+    players.sort((a, b) => b.bestScore - a.bestScore);
+    renderRanking(players);
+    
+    // Atualiza fotos dos outros jogadores na tela de login
+    updateLoginAvatars(players);
+    
+  }, (error) => {
+    console.error('Erro ao escutar ranking:', error);
+    renderRankingLocal();
+  });
+}
+
+// Atualiza os avatares na tela de login com fotos do Firebase
+function updateLoginAvatars(players) {
+  for (const player of players) {
+    const playerId = player.id;
+    const avatarDiv = document.getElementById(`avatar-${playerId}`);
+    if (avatarDiv && player.photoURL && player.photoURL !== avatarDiv.dataset.photoUrl) {
+      // Se tem foto e é diferente da atual
+      avatarDiv.dataset.photoUrl = player.photoURL;
+      avatarDiv.innerHTML = `<img src="${player.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    } else if (avatarDiv && (!player.photoURL || player.photoURL === '')) {
+      // Se não tem foto, mostra a letra
+      avatarDiv.innerHTML = PLAYERS[playerId]?.avatar || playerId.charAt(0).toUpperCase();
+    }
+  }
+}
+
+// Renderizar ranking (versão Firebase)
+function renderRanking(players) {
+  const rankingList = document.getElementById('ranking-list');
+  if (!rankingList) return;
+  
+  rankingList.innerHTML = '';
+  
+  if (!players || players.length === 0) {
+    rankingList.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px;">Nenhum jogador no ranking</div>';
+    return;
+  }
+  
+  const medals = ['🥇', '🥈', '🥉'];
+  
+  players.slice(0, 10).forEach((player, index) => {
+    const isCurrent = currentPlayer && player.id === currentPlayer;
+    const avatarClass = PLAYERS[player.id]?.avatarClass || 'avatar-g';
+    const avatarChar = PLAYERS[player.id]?.avatar || player.name.charAt(0);
+    
+    const card = document.createElement('div');
+    card.className = `rank-card ${index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : ''}`;
+    card.innerHTML = `
+      <div class="rank-pos">${medals[index] || (index + 1)}</div>
+      <div class="rank-avatar ${avatarClass}">
+        ${player.photoURL ? `<img src="${player.photoURL}">` : avatarChar}
+      </div>
+      <div class="rank-info">
+        <div class="rank-name" style="color:${isCurrent ? '#FF6B1A' : '#fff'}">${player.name}${isCurrent ? ' ◀' : ''}</div>
+        <div class="rank-details">Combo x${player.bestCombo || 0} · Fase ${player.phase || 1}</div>
+      </div>
+      <div class="rank-score">${player.bestScore || 0}</div>
+    `;
+    rankingList.appendChild(card);
+  });
+}
+
+// Fallback: ranking local
+function renderRankingLocal() {
+  const rankingList = document.getElementById('ranking-list');
+  if (!rankingList) return;
+  
+  rankingList.innerHTML = '';
+  
+  const players = [];
+  for (const [id, player] of Object.entries(PLAYERS)) {
+    const data = getPlayerLocalData(id);
+    players.push({
+      id: id,
+      name: data.displayName || player.name,
+      bestScore: data.bestScore || 0,
+      bestCombo: data.bestCombo || 0,
+      phase: data.phase || 1,
+      photoURL: data.photoURL || null
+    });
+  }
+  
+  players.sort((a, b) => b.bestScore - a.bestScore);
+  
+  const medals = ['🥇', '🥈', '🥉'];
+  
+  players.slice(0, 10).forEach((player, index) => {
+    const isCurrent = currentPlayer && player.id === currentPlayer;
+    const avatarClass = PLAYERS[player.id]?.avatarClass || 'avatar-g';
+    const avatarChar = PLAYERS[player.id]?.avatar || player.name.charAt(0);
+    
+    const card = document.createElement('div');
+    card.className = `rank-card ${index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : ''}`;
+    card.innerHTML = `
+      <div class="rank-pos">${medals[index] || (index + 1)}</div>
+      <div class="rank-avatar ${avatarClass}">
+        ${player.photoURL ? `<img src="${player.photoURL}">` : avatarChar}
+      </div>
+      <div class="rank-info">
+        <div class="rank-name" style="color:${isCurrent ? '#FF6B1A' : '#fff'}">${player.name}${isCurrent ? ' ◀' : ''}</div>
+        <div class="rank-details">Combo x${player.bestCombo || 0} · Fase ${player.phase || 1}</div>
+      </div>
+      <div class="rank-score">${player.bestScore || 0}</div>
+    `;
+    rankingList.appendChild(card);
+  });
+}
+
+// Função para salvar no Firebase e local (chamada no endGame)
+async function syncRankingAfterGame(playerKey, score, combo, phase) {
+  savePlayerLocalData(playerKey, currentPlayerData);
+  
+  if (firebaseReady) {
+    salvarRankingFirebase(playerKey, score, combo, phase).catch(err => {
+      console.warn('Erro no save Firebase (não crítico):', err);
+    });
+  }
+}
+
+// ============================================================
+// APP STATE
+// ============================================================
+let currentPlayer = null;
+let currentPlayerData = { bestScore: 0, games: 0, totalBaskets: 0, totalPerfect: 0, bestCombo: 0, phase: 1, medals: [], history: [], photoURL: null, displayName: '' };
+let currentScreen = 'login';
+let pinBuffer = '';
+let selectedPlayerBtn = null;
+
+// ============================================================
+// UI FUNCTIONS
+// ============================================================
+
+function updateUIAvatar() {
+  const hasPhoto = currentPlayerData.photoURL;
+  
+  const menuAvatarInitial = document.getElementById('menu-avatar-initial');
+  const menuAvatarImg = document.getElementById('menu-avatar-img');
+  if (hasPhoto) {
+    menuAvatarInitial.style.display = 'none';
+    menuAvatarImg.style.display = 'block';
+    menuAvatarImg.src = currentPlayerData.photoURL;
+  } else {
+    menuAvatarInitial.style.display = 'flex';
+    menuAvatarImg.style.display = 'none';
+    menuAvatarInitial.textContent = PLAYERS[currentPlayer].avatar;
+  }
+  
+  const profileAvatarText = document.getElementById('profile-avatar-text');
+  const profileAvatarImg = document.getElementById('profile-avatar-img');
+  if (hasPhoto) {
+    profileAvatarText.style.display = 'none';
+    profileAvatarImg.style.display = 'block';
+    profileAvatarImg.src = currentPlayerData.photoURL;
+  } else {
+    profileAvatarText.style.display = 'flex';
+    profileAvatarImg.style.display = 'none';
+    profileAvatarText.textContent = PLAYERS[currentPlayer].avatar;
+  }
+}
+
+// Calcula a posição do jogador no ranking (1, 2 ou 3)
+function getPlayerRankPosition() {
+  if (!currentPlayer) return '?';
+  
+  const allScores = [];
+  for (const [id, player] of Object.entries(PLAYERS)) {
+    const data = getPlayerLocalData(id);
+    allScores.push({ id, score: data.bestScore || 0 });
+  }
+  
+  allScores.sort((a, b) => b.score - a.score);
+  const position = allScores.findIndex(p => p.id === currentPlayer) + 1;
+  return position;
+}
+
+function updateRankBadge() {
+  const position = getPlayerRankPosition();
+  const suffix = position === 1 ? '🥇 Líder' : position === 2 ? '🥈 Vice-Líder' : position === 3 ? '🥉 Terceiro' : `${position}º Lugar`;
+  const badgeEl = document.getElementById('profile-rank-badge');
+  if (badgeEl) badgeEl.textContent = position > 0 ? `#${position} do Grupo - ${suffix}` : '#? do Grupo';
+}
+
+function updateMenuUI() {
+  if (!currentPlayer) return;
+  
+  document.getElementById('menu-player-display').textContent = (currentPlayerData.displayName || PLAYERS[currentPlayer].name).toUpperCase();
+  document.getElementById('menu-best').textContent = currentPlayerData.bestScore;
+  document.getElementById('menu-games').textContent = currentPlayerData.games;
+  document.getElementById('menu-phase').textContent = currentPlayerData.phase;
+  const phaseIdx = Math.min(currentPlayerData.phase - 1, PHASES.length - 1);
+  document.getElementById('menu-phase-text').textContent = `Fase ${currentPlayerData.phase} — ${PHASES[phaseIdx].name}`;
+  updateUIAvatar();
+}
+
+function updateProfileUI() {
+  document.getElementById('profile-name').textContent = (currentPlayerData.displayName || PLAYERS[currentPlayer].name).toUpperCase();
+  document.getElementById('p-best').textContent = currentPlayerData.bestScore;
+  document.getElementById('p-games').textContent = currentPlayerData.games;
+  document.getElementById('p-baskets').textContent = currentPlayerData.totalBaskets;
+  document.getElementById('p-phase').textContent = currentPlayerData.phase;
+  document.getElementById('p-streak').textContent = (currentPlayerData.bestCombo || 0) + 'x';
+  document.getElementById('p-perfect').textContent = currentPlayerData.totalPerfect;
+  updateRankBadge();
+  
+  const medalRow = document.getElementById('medals-row');
+  medalRow.innerHTML = '';
+  MEDALS_DEF.forEach(m => {
+    const earned = (currentPlayerData.medals || []).includes(m.id);
+    medalRow.innerHTML += `<div class="medal ${earned ? 'earned' : ''}" style="${!earned ? 'opacity:0.3' : ''}"><span class="medal-icon">${m.icon}</span>${m.label}</div>`;
+  });
+  
+  updateUIAvatar();
+}
+
+function buildRanking() {
+  if (firebaseReady && db) {
+    escutarRanking();
+  } else {
+    renderRankingLocal();
+  }
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+function selectPlayer(btn) {
+  document.querySelectorAll('.player-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedPlayerBtn = btn;
+  currentPlayer = btn.dataset.player;
+  pinBuffer = '';
+  updatePinDots();
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('btn-login').disabled = true;
+}
+
+function pinInput(digit) {
+  if (!currentPlayer) { showToast('Selecione um jogador primeiro'); return; }
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  updatePinDots();
+  if (pinBuffer.length === 4) document.getElementById('btn-login').disabled = false;
+}
+
+function pinDelete() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+  document.getElementById('btn-login').disabled = true;
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pin' + i);
+    if (dot) dot.classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+
+async function loadPlayerProfile(playerKey) {
+  let localData = getPlayerLocalData(playerKey);
+  currentPlayerData = { ...localData };
+  
+  if (firebaseReady && db) {
+    try {
+      const snapshot = await db.ref(`ranking/${playerKey}`).once('value');
+      const data = snapshot.val();
+      if (data) {
+        currentPlayerData = {
+          bestScore: Math.max(data.bestScore || 0, localData.bestScore),
+          games: localData.games,
+          totalBaskets: localData.totalBaskets,
+          totalPerfect: localData.totalPerfect,
+          bestCombo: Math.max(data.bestCombo || 0, localData.bestCombo),
+          phase: Math.max(data.phase || 1, localData.phase),
+          medals: localData.medals || [],
+          history: localData.history || [],
+          photoURL: data.photoURL || localData.photoURL,
+          displayName: data.displayName || localData.displayName || PLAYERS[playerKey].name
+        };
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar do Firebase:', e);
+    }
+  }
+  
+  if (!currentPlayerData.displayName) {
+    currentPlayerData.displayName = PLAYERS[playerKey].name;
+  }
+  
+  // Salva localmente para consistência
+  savePlayerLocalData(playerKey, currentPlayerData);
+}
+
+async function doLogin() {
+  if (!currentPlayer) { 
+    document.getElementById('login-error').textContent = 'Selecione um jogador!'; 
+    return; 
+  }
+  
+  if (PLAYERS[currentPlayer].pin !== pinBuffer) {
+    document.getElementById('login-error').textContent = 'PIN incorreto. Tente novamente.';
+    pinBuffer = '';
+    updatePinDots();
+    document.getElementById('btn-login').disabled = true;
+    return;
+  }
+  
+  const loadingEl = document.getElementById('login-loading');
+  if (loadingEl) loadingEl.style.display = 'block';
+  document.getElementById('btn-login').disabled = true;
+  
+  await loadPlayerProfile(currentPlayer);
+  
+  document.getElementById('login-error').textContent = '';
+  pinBuffer = '';
+  updatePinDots();
+  if (loadingEl) loadingEl.style.display = 'none';
+  showScreen('menu');
+  updateMenuUI();
+  updateRankBadge();
+  
+  if (firebaseReady) {
+    setTimeout(() => escutarRanking(), 100);
+  }
+}
+
+function doLogout() {
+  if (window.gameInterval) clearInterval(window.gameInterval);
+  if (window.gameAnimFrame) cancelAnimationFrame(window.gameAnimFrame);
+  currentPlayer = null;
+  selectedPlayerBtn = null;
+  document.querySelectorAll('.player-btn').forEach(b => b.classList.remove('selected'));
+  pinBuffer = '';
+  updatePinDots();
+  showScreen('login');
+}
+
+// ============================================================
+// PROFILE EDIT
+// ============================================================
+function showProfileEdit() {
+  const nameInput = document.getElementById('profile-name-edit');
+  if (nameInput) nameInput.value = currentPlayerData.displayName || PLAYERS[currentPlayer].name;
+  
+  const previewText = document.getElementById('preview-text');
+  const previewImg = document.getElementById('preview-img');
+  
+  if (currentPlayerData.photoURL) {
+    if (previewText) previewText.style.display = 'none';
+    if (previewImg) {
+      previewImg.style.display = 'block';
+      previewImg.src = currentPlayerData.photoURL;
+    }
+  } else {
+    if (previewText) {
+      previewText.style.display = 'flex';
+      previewText.textContent = PLAYERS[currentPlayer].avatar;
+    }
+    if (previewImg) previewImg.style.display = 'none';
+  }
+  
+  showScreen('profile-edit');
+}
+
+function cancelEdit() {
+  showScreen('profile');
+  updateProfileUI();
+}
+
+async function saveProfile() {
+  const newName = document.getElementById('profile-name-edit')?.value.trim();
+  if (newName) {
+    currentPlayerData.displayName = newName;
+  }
+  
+  savePlayerLocalData(currentPlayer, currentPlayerData);
+  
+  if (firebaseReady && db) {
+    try {
+      await db.ref(`ranking/${currentPlayer}`).update({
+        displayName: currentPlayerData.displayName,
+        photoURL: currentPlayerData.photoURL,
+        updatedAt: Date.now()
+      });
+    } catch (e) {
+      console.warn('Erro ao salvar perfil no Firebase:', e);
+    }
+  }
+  
+  showScreen('profile');
+  updateProfileUI();
+  updateMenuUI();
+  showToast('✅ Perfil salvo!');
+}
+
+async function uploadPhoto(file) {
+  if (!currentPlayer) return null;
+  
+  const reader = new FileReader();
+  const photoURL = await new Promise((resolve) => {
+    reader.onloadend = () => {
+      const base64 = reader.result;
+      resolve(base64);
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  currentPlayerData.photoURL = photoURL;
+  savePlayerLocalData(currentPlayer, currentPlayerData);
+  
+  if (firebaseReady && db) {
+    try {
+      await db.ref(`ranking/${currentPlayer}`).update({
+        photoURL: photoURL,
+        updatedAt: Date.now()
+      });
+    } catch (e) {
+      console.warn('Erro ao salvar foto no Firebase:', e);
+    }
+  }
+  
+  // [AJUSTE] Volta para tela de perfil automaticamente
+  showScreen('profile');
+  updateProfileUI();
+  updateMenuUI();
+  showToast('✅ Foto atualizada!');
+  
+  return photoURL;
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+let prevScreen = 'menu';
+
+function showScreen(name) {
+  prevScreen = currentScreen;
+  currentScreen = name;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const screenEl = document.getElementById('screen-' + name);
+  if (screenEl) screenEl.classList.add('active');
+  
+  if (name === 'ranking') buildRanking();
+  if (name === 'profile') updateProfileUI();
+  if (name === 'history') buildHistory();
+  if (name === 'menu') updateMenuUI();
+}
+
+function goBack() { showScreen(prevScreen === currentScreen ? 'menu' : prevScreen); }
+
+// ============================================================
+// GAME ENGINE (COMPLETO)
+// ============================================================
+let gameState = {};
+let gameAnimFrame = null;
+let gameInterval = null;
+
+function startGame() {
+  showScreen('game');
+  const phaseIdx = Math.min(currentPlayerData.phase - 1, PHASES.length - 1);
+  const phase = PHASES[phaseIdx];
+
+  gameState = {
+    score: 0,
+    baskets: 0,
+    perfect: 0,
+    combo: 0,
+    bestCombo: 0,
+    timeLeft: phase.timeLimit,
+    phase: currentPlayerData.phase,
+    phaseData: phase,
+    active: true,
+    dragging: false,
+    dragStart: null,
+    dragCurrent: null,
+    ballInFlight: false,
+    hoopState: 'idle',
+    rimTouched: false,
+    shots: 0,
+    ballScale: 1.0
+  };
+
+  initCanvas();
+  showPhaseBanner(currentPlayerData.phase);
+  startGameTimer();
+}
+
+function initCanvas() {
+  const canvas = document.getElementById('game-canvas');
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+
+  const BASE_BALL_R = Math.min(32, W * 0.09);
+  const HOOP_R = Math.min(58, W * 0.13);
+
+  gameState.ballBaseR = BASE_BALL_R;
+  gameState.hoopR = HOOP_R;
+  gameState.ballOrigin = { x: W / 2, y: H * 0.72 };
+
+  resetGameBall();
+  resetGameHoop();
+  gameState.active = true;
+  setupGameEvents();
+  if (gameAnimFrame) cancelAnimationFrame(gameAnimFrame);
+  gameLoop();
+}
+
+function resetGameBall(resetCombo = true) {
+  gameState.ballScale = 1.4;
+  
+  gameState.ball = {
+    x: gameState.ballOrigin.x,
+    y: gameState.ballOrigin.y,
+    baseR: gameState.ballBaseR,
+    r: gameState.ballBaseR * gameState.ballScale,
+    vx: 0, vy: 0, rot: 0
+  };
+  gameState.ballInFlight = false;
+  gameState.dragging = false;
+  gameState.hoopState = 'idle';
+  gameState.rimTouched = false;
+  if (resetCombo) {
+    gameState.combo = 0;
+    updateComboDisplay();
+  }
+}
+
+function resetGameHoop() {
+  const canvas = document.getElementById('game-canvas');
+  const W = canvas.width, H = canvas.height;
+  const r = gameState.hoopR;
+
+  gameState.hoop = {
+    x: W / 2,
+    y: H * 0.28,
+    r: r,
+    vx: gameState.phaseData.hoopMove ? 2.2 : 0
+  };
+
+  if (gameState.phaseData.hasObstacle) {
+    gameState.obstacle = {
+      x: W * 0.3,
+      y: H * 0.5,
+      w: W * 0.25,
+      h: H * 0.022,
+      vx: 2
+    };
+  } else {
+    gameState.obstacle = null;
+  }
+}
+
+function setupGameEvents() {
+  const canvas = document.getElementById('game-canvas');
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {
+      x: (src.clientX - rect.left) * (canvas.width / rect.width),
+      y: (src.clientY - rect.top) * (canvas.height / rect.height)
+    };
+  }
+
+  function onStart(e) {
+    e.preventDefault();
+    if (gameState.ballInFlight || !gameState.active) return;
+    const pos = getPos(e);
+    const b = gameState.ball;
+    const dx = pos.x - b.x, dy = pos.y - b.y;
+    if (Math.hypot(dx, dy) < b.r * 3) {
+      gameState.dragging = true;
+      gameState.dragStart = { x: b.x, y: b.y };
+      gameState.dragCurrent = { x: pos.x, y: pos.y };
+    }
+  }
+
+  function onMove(e) {
+    if (!gameState.dragging) return;
+    e.preventDefault();
+    gameState.dragCurrent = getPos(e);
+  }
+
+  function onEnd(e) {
+    if (!gameState.dragging || !gameState.active) return;
+    gameState.dragging = false;
+    const ds = gameState.dragStart, dc = gameState.dragCurrent;
+    const dx = ds.x - dc.x, dy = ds.y - dc.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 15) return;
+    
+    const maxPower = 200;
+    const power = Math.min(dist, maxPower);
+    const angle = Math.atan2(dy, dx);
+    const speed = (power / maxPower) * 28;
+    
+    gameState.ball.vx = Math.cos(angle) * speed;
+    gameState.ball.vy = Math.sin(angle) * speed;
+    gameState.ballInFlight = true;
+    gameState.hoopState = 'idle';
+    gameState.rimTouched = false;
+    gameState.shots++;
+  }
+
+  canvas.ontouchstart = onStart;
+  canvas.ontouchmove = onMove;
+  canvas.ontouchend = onEnd;
+  canvas.onmousedown = onStart;
+  window.onmousemove = onMove;
+  window.onmouseup = onEnd;
+}
+
+function startGameTimer() {
+  if (gameInterval) clearInterval(gameInterval);
+  gameInterval = setInterval(() => {
+    if (!gameState.active) return;
+    gameState.timeLeft--;
+    const timerEl = document.getElementById('hud-timer');
+    if (timerEl) timerEl.textContent = gameState.timeLeft;
+    if (timerEl) timerEl.classList.toggle('urgent', gameState.timeLeft <= 10);
+    if (gameState.timeLeft <= 0) endGame();
+  }, 1000);
+}
+
+function endGame() {
+  gameState.active = false;
+  if (gameInterval) clearInterval(gameInterval);
+  if (gameAnimFrame) cancelAnimationFrame(gameAnimFrame);
+  
+  currentPlayerData.bestScore = Math.max(currentPlayerData.bestScore, gameState.score);
+  currentPlayerData.games++;
+  currentPlayerData.totalBaskets += gameState.baskets;
+  currentPlayerData.totalPerfect += gameState.perfect;
+  currentPlayerData.bestCombo = Math.max(currentPlayerData.bestCombo || 0, gameState.bestCombo);
+  
+  const phaseThreshold = currentPlayerData.phase * 70;
+  if (gameState.score >= phaseThreshold && currentPlayerData.phase < PHASES.length) {
+    currentPlayerData.phase++;
+  }
+  
+  currentPlayerData.history = currentPlayerData.history || [];
+  currentPlayerData.history.unshift({
+    date: new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }),
+    time: new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }),
+    score: gameState.score,
+    baskets: gameState.baskets,
+    phase: gameState.phase
+  });
+  currentPlayerData.history = currentPlayerData.history.slice(0, 20);
+  
+  MEDALS_DEF.forEach(m => {
+    if (!(currentPlayerData.medals || []).includes(m.id) && m.check(currentPlayerData)) {
+      currentPlayerData.medals = currentPlayerData.medals || [];
+      currentPlayerData.medals.push(m.id);
+      showToast(`🏅 Conquista: ${m.label}!`);
+    }
+  });
+  
+  syncRankingAfterGame(currentPlayer, gameState.score, gameState.bestCombo, currentPlayerData.phase);
+  
+  const resultName = document.getElementById('result-player-name');
+  const resultScore = document.getElementById('result-score');
+  const resultBaskets = document.getElementById('result-baskets');
+  const resultPerfect = document.getElementById('result-perfect');
+  const resultBestCombo = document.getElementById('result-best-combo');
+  const resultRecord = document.getElementById('result-record');
+  
+  if (resultName) resultName.textContent = (currentPlayerData.displayName || PLAYERS[currentPlayer].name).toUpperCase();
+  if (resultScore) resultScore.textContent = gameState.score;
+  if (resultBaskets) resultBaskets.textContent = gameState.baskets;
+  if (resultPerfect) resultPerfect.textContent = gameState.perfect;
+  if (resultBestCombo) resultBestCombo.textContent = gameState.bestCombo + 'x';
+  if (resultRecord) resultRecord.textContent = (gameState.score > (currentPlayerData.bestScore - gameState.score)) ? '🎉 NOVO RECORDE PESSOAL!' : '';
+  
+  showScreen('result');
+}
+
+function exitGame() {
+  gameState.active = false;
+  if (gameInterval) clearInterval(gameInterval);
+  if (gameAnimFrame) cancelAnimationFrame(gameAnimFrame);
+  showScreen('menu');
+}
+
+function gameLoop() {
+  const canvas = document.getElementById('game-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  ctx.clearRect(0, 0, W, H);
+  drawCourt(ctx, W, H);
+
+  if (!gameState.active) {
+    gameAnimFrame = requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  if (gameState.phaseData.hoopMove && gameState.hoop) {
+    gameState.hoop.x += gameState.hoop.vx;
+    const margin = gameState.hoop.r + 30;
+    if (gameState.hoop.x < margin || gameState.hoop.x > W - margin) {
+      gameState.hoop.vx *= -1;
+    }
+  }
+
+  if (gameState.obstacle) {
+    gameState.obstacle.x += gameState.obstacle.vx;
+    if (gameState.obstacle.x < 20 || gameState.obstacle.x + gameState.obstacle.w > W - 20) {
+      gameState.obstacle.vx *= -1;
+    }
+  }
+
+  if (gameState.ballInFlight && gameState.ball) {
+    stepGamePhysics(W, H);
+  } else if (gameState.ball && !gameState.ballInFlight) {
+    gameState.ballScale = 1.4;
+    gameState.ball.r = gameState.ball.baseR * gameState.ballScale;
+  }
+
+  if (gameState.obstacle) drawObstacle(ctx, gameState.obstacle);
+  
+  if (gameState.hoop) {
+    drawNet(ctx, gameState.hoop);
+    drawRimBack(ctx, gameState.hoop);
+  }
+  
+  if (gameState.ball && gameState.hoop) {
+    const isBehindRim = gameState.ball.y < gameState.hoop.y;
+    if (isBehindRim) {
+      drawBall(ctx, gameState.ball);
+    }
+  }
+  
+  if (gameState.hoop) {
+    drawRimFront(ctx, gameState.hoop);
+  }
+  
+  if (gameState.ball && gameState.hoop) {
+    const isInFront = gameState.ball.y >= gameState.hoop.y;
+    if (isInFront) {
+      drawBall(ctx, gameState.ball);
+    }
+  }
+
+  if (gameState.dragging && !gameState.ballInFlight && gameState.ball) {
+    drawAimGuide(ctx);
+  }
+
+  gameAnimFrame = requestAnimationFrame(gameLoop);
+}
+
+function stepGamePhysics(W, H) {
+  const ball = gameState.ball;
+  const hoop = gameState.hoop;
+
+  const GRAVITY = 0.38;
+  const AIR_DRAG = 0.998;
+  const GROUND_BOUNCE = 0.45;
+  const WALL_BOUNCE = 0.55;
+  const RIM_BOUNCE = 0.48;
+  const RIM_FRICTION = 0.82;
+
+  const prevY = ball.y;
+
+  ball.vx *= AIR_DRAG;
+  ball.vy += GRAVITY;
+
+  const MAX_SPEED = 25;
+  ball.vx = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, ball.vx));
+  ball.vy = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, ball.vy));
+
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+  ball.rot += ball.vx * 0.06;
+
+  const heightRatio = Math.max(0, Math.min(1, (H - ball.y) / H));
+  ball.r = ball.baseR * (0.85 + heightRatio * 0.25);
+
+  if (ball.y + ball.r >= H) {
+    ball.y = H - ball.r;
+    ball.vy = -ball.vy * GROUND_BOUNCE;
+    ball.vx *= 0.96;
+
+    if (Math.abs(ball.vy) < 1.2) {
+      resetGameBall(true);
+      return;
+    }
+  }
+
+  if (ball.x - ball.r <= 0) {
+    ball.x = ball.r;
+    ball.vx = Math.abs(ball.vx) * WALL_BOUNCE;
+  }
+
+  if (ball.x + ball.r >= W) {
+    ball.x = W - ball.r;
+    ball.vx = -Math.abs(ball.vx) * WALL_BOUNCE;
+  }
+
+  const rimPoints = [
+    { x: hoop.x - hoop.r, y: hoop.y },
+    { x: hoop.x + hoop.r, y: hoop.y }
+  ];
+
+  const RIM_RADIUS = 8;
+
+  rimPoints.forEach(rp => {
+    const dx = ball.x - rp.x;
+    const dy = ball.y - rp.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < ball.r + RIM_RADIUS) {
+      gameState.rimTouched = true;
+
+      const nx = dx / dist;
+      const ny = dy / dist;
+
+      const overlap = (ball.r + RIM_RADIUS) - dist;
+      ball.x += nx * overlap;
+      ball.y += ny * overlap;
+
+      const vdotn = ball.vx * nx + ball.vy * ny;
+
+      if (vdotn < 0) {
+        const imp = (1 + RIM_BOUNCE) * vdotn;
+        ball.vx -= imp * nx;
+        ball.vy -= imp * ny;
+
+        ball.vx *= RIM_FRICTION;
+        ball.vy *= RIM_FRICTION;
+      }
+    }
+  });
+
+  const SCORE_TOP = hoop.y;
+  const SCORE_BOTTOM = hoop.y + hoop.r * 0.9;
+  const LEFT = hoop.x - hoop.r * 0.7;
+  const RIGHT = hoop.x + hoop.r * 0.7;
+
+  const wasAbove = prevY < SCORE_TOP;
+  const isBelow = ball.y > SCORE_TOP;
+  const isInside = ball.x > LEFT && ball.x < RIGHT;
+  const descending = ball.vy > 0;
+
+  if (gameState.hoopState === 'idle') {
+    if (wasAbove && isBelow && isInside && descending) {
+      gameState.hoopState = 'entered';
+    }
+  }
+
+  if (gameState.hoopState === 'entered') {
+    const pull = (hoop.x - ball.x) * 0.08;
+    ball.vx += pull;
+    ball.vx *= 0.98;
+    ball.vy += 0.05;
+
+    if (ball.y > SCORE_BOTTOM) {
+      const stillInside = ball.x > hoop.x - hoop.r * 0.8 && ball.x < hoop.x + hoop.r * 0.8;
+
+      if (stillInside) {
+        const isPerfect = !gameState.rimTouched && Math.abs(ball.x - hoop.x) < hoop.r * 0.35;
+        registerScore(isPerfect, hoop.x, hoop.y - 40);
+        gameState.hoopState = 'scored';
+      } else {
+        gameState.hoopState = 'missed';
+        gameState.combo = 0;
+        updateComboDisplay();
+      }
+    }
+  }
+
+  if (gameState.hoopState !== 'idle' && gameState.hoopState !== 'scored') {
+    if (ball.y > hoop.y + hoop.r + 30) {
+      gameState.hoopState = 'idle';
+    }
+  }
+
+  if (ball.y > H + 150) {
+    if (gameState.hoopState !== 'scored') {
+      gameState.combo = 0;
+      updateComboDisplay();
+    }
+    resetGameBall(true);
+  }
+}
+
+function registerScore(isPerfect, popX, popY) {
+  gameState.combo++;
+  gameState.bestCombo = Math.max(gameState.bestCombo, gameState.combo);
+  gameState.baskets++;
+  if (isPerfect) gameState.perfect++;
+
+  const pts = isPerfect ? 3 : 2;
+  const comboMul = Math.min(gameState.combo, 4);
+  gameState.score += pts * comboMul;
+
+  const scoreEl = document.getElementById('hud-score');
+  if (scoreEl) scoreEl.textContent = gameState.score;
+  
+  const phaseEl = document.getElementById('hud-phase');
+  if (phaseEl) phaseEl.textContent = `FASE ${gameState.phase}`;
+
+  const comboEl = document.getElementById('hud-combo');
+  if (comboEl) {
+    if (gameState.combo >= 2) {
+      comboEl.textContent = `COMBO x${gameState.combo}!`;
+      comboEl.classList.add('visible');
+      spawnFlash();
+      setTimeout(() => comboEl.classList.remove('visible'), 1400);
+    } else {
+      comboEl.classList.remove('visible');
+    }
+  }
+
+  spawnScorePopup(popX, popY, isPerfect ? '✨ PERFEITA! +3' : `+${pts * comboMul}`, isPerfect ? 'plus3' : 'plus2');
+  if (gameState.combo >= 2) spawnScorePopup(popX, popY - 44, `x${comboMul} COMBO!`, 'combo');
+  spawnParticles(popX, popY + 40, 8);
+
+  if (navigator.vibrate) navigator.vibrate(isPerfect ? [50, 30, 50] : [30]);
+
+  setTimeout(() => {
+    resetGameBall(false);
+    gameState.hoopState = 'idle';
+    gameState.rimTouched = false;
+  }, 200);
+}
+
+function updateComboDisplay() {
+  const comboEl = document.getElementById('hud-combo');
+  if (!comboEl) return;
+  
+  if (gameState.combo >= 2) {
+    comboEl.textContent = `COMBO x${gameState.combo}!`;
+    comboEl.classList.add('visible');
+  } else {
+    comboEl.classList.remove('visible');
+  }
+}
+
+function buildHistory() {
+  const list = document.getElementById('history-list');
+  if (!list) return;
+  
+  list.innerHTML = '';
+  const history = currentPlayerData.history || [];
+  if (history.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px;">Nenhuma partida ainda</div>';
+    return;
+  }
+  history.slice(0, 20).forEach(h => {
+    list.innerHTML += `
+      <div class="history-card">
+        <div class="history-date">${h.date}<br>${h.time || ''}</div>
+        <div class="rank-avatar avatar-g" style="width:36px;height:36px;font-size:14px;">${(currentPlayerData.displayName || PLAYERS[currentPlayer].name).charAt(0)}</div>
+        <div class="history-info"><div class="history-player">${currentPlayerData.displayName || PLAYERS[currentPlayer].name}</div><div class="history-details">${h.baskets} cestas · Fase ${h.phase}</div></div>
+        <div class="history-score">${h.score}</div>
+      </div>
+    `;
+  });
+}
+
+// ============================================================
+// DRAWING FUNCTIONS
+// ============================================================
+function drawCourt(ctx, W, H) {
+  ctx.fillStyle = '#07071a';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 55) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 55) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+}
+
+function drawNet(ctx, h) {
+  const { x, y, r } = h;
+  for (let i = 0; i <= 8; i++) {
+    const t = i / 8;
+    const topX = x - r + 2 * r * t;
+    const botX = x + (topX - x) * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(topX, y + 2);
+    ctx.lineTo(botX, y + r * 1.1);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+}
+
+function drawRimBack(ctx, h) {
+  const { x, y, r } = h;
+  ctx.beginPath();
+  ctx.ellipse(x, y, r * 0.92, r * 0.38, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = '#AA3300';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+function drawRimFront(ctx, h) {
+  const { x, y, r } = h;
+  ctx.shadowColor = '#FF6B1A';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.ellipse(x, y, r, r * 0.42, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = '#E05000';
+  ctx.lineWidth = 5;
+  ctx.stroke();
+  [x - r, x + r].forEach(px => {
+    ctx.beginPath();
+    ctx.ellipse(px, y, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#CC3A00';
+    ctx.fill();
+  });
+  ctx.beginPath();
+  ctx.ellipse(x - r * 0.3, y - 2, r * 0.15, 3, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,150,50,0.4)';
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function drawBall(ctx, ball) {
+  ctx.save();
+  ctx.translate(ball.x, ball.y);
+  ctx.rotate(ball.rot || 0);
+  const grad = ctx.createRadialGradient(-ball.r * 0.25, -ball.r * 0.25, ball.r * 0.1, 0, 0, ball.r);
+  grad.addColorStop(0, '#FFB060');
+  grad.addColorStop(0.5, '#E86010');
+  grad.addColorStop(1, '#7A2000');
+  ctx.beginPath();
+  ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-ball.r, 0);
+  ctx.lineTo(ball.r, 0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, -ball.r);
+  ctx.quadraticCurveTo(ball.r * 0.45, 0, 0, ball.r);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, -ball.r);
+  ctx.quadraticCurveTo(-ball.r * 0.45, 0, 0, ball.r);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawObstacle(ctx, obs) {
+  ctx.fillStyle = 'rgba(0,212,255,0.5)';
+  ctx.beginPath();
+  ctx.roundRect(obs.x, obs.y, obs.w, obs.h, 6);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,212,255,0.9)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function drawAimGuide(ctx) {
+  if (!gameState.dragStart || !gameState.dragCurrent) return;
+  const ds = gameState.dragStart, dc = gameState.dragCurrent;
+  const dx = ds.x - dc.x, dy = ds.y - dc.y;
+  const dist = Math.min(Math.hypot(dx, dy), 220);
+  if (dist < 10) return;
+  const angle = Math.atan2(dy, dx);
+  const speed = (dist / 220) * 28;
+
+  let bx = gameState.ball.x, by = gameState.ball.y;
+  let bvx = Math.cos(angle) * speed;
+  let bvy = Math.sin(angle) * speed;
+
+  for (let i = 0; i < 30; i++) {
+    bvx *= 0.998;
+    bvy += 0.38;
+    bx += bvx;
+    by += bvy;
+    ctx.beginPath();
+    ctx.arc(bx, by, 3 * (1 - i / 30), 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - i / 30)})`;
+    ctx.fill();
+  }
+
+  const pct = dist / 220;
+  ctx.beginPath();
+  ctx.arc(gameState.ball.x, gameState.ball.y, gameState.ball.r + 8,
+          -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+  ctx.strokeStyle = pct < 0.5 ? '#00D4FF' : (pct < 0.8 ? '#FFCC00' : '#FF4400');
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+// ============================================================
+// EFFECTS
+// ============================================================
+function spawnParticles(x, y, count = 6) {
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'particle';
+    el.textContent = ['🏀', '✨', '⭐', '💥', '🔥'][Math.floor(Math.random() * 5)];
+    el.style.left = (x - 15 + Math.random() * 30) + 'px';
+    el.style.top = (y + Math.random() * 20) + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 800);
+  }
+}
+
+function spawnScorePopup(x, y, text, cls) {
+  const el = document.createElement('div');
+  el.className = 'score-popup ' + cls;
+  el.textContent = text;
+  el.style.left = (x - 60) + 'px';
+  el.style.top = (y - 30) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 900);
+}
+
+function spawnFlash() {
+  const el = document.createElement('div');
+  el.className = 'combo-flash';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 350);
+}
+
+function showPhaseBanner(phase) {
+  const banner = document.getElementById('phase-banner');
+  if (!banner) return;
+  const bannerNum = document.getElementById('phase-banner-num');
+  if (bannerNum) bannerNum.textContent = phase;
+  banner.classList.add('show');
+  setTimeout(() => banner.classList.remove('show'), 1700);
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// EVENT BINDINGS
+// ============================================================
+document.querySelectorAll('.player-btn').forEach(btn => {
+  btn.addEventListener('click', () => selectPlayer(btn));
+});
+document.querySelectorAll('.num-btn[data-num]').forEach(btn => {
+  btn.addEventListener('click', () => pinInput(btn.dataset.num));
+});
+document.querySelector('.num-btn.del')?.addEventListener('click', () => pinDelete());
+document.getElementById('btn-login')?.addEventListener('click', () => doLogin());
+document.getElementById('btn-startgame')?.addEventListener('click', () => startGame());
+document.getElementById('btn-ranking')?.addEventListener('click', () => showScreen('ranking'));
+document.getElementById('btn-profile')?.addEventListener('click', () => showScreen('profile'));
+document.getElementById('btn-history')?.addEventListener('click', () => showScreen('history'));
+document.getElementById('btn-logout')?.addEventListener('click', () => doLogout());
+document.getElementById('btn-exitgame')?.addEventListener('click', () => exitGame());
+document.getElementById('btn-playagain')?.addEventListener('click', () => startGame());
+document.getElementById('btn-resultranking')?.addEventListener('click', () => showScreen('ranking'));
+document.getElementById('btn-resultmenu')?.addEventListener('click', () => showScreen('menu'));
+document.getElementById('back-ranking')?.addEventListener('click', () => goBack());
+document.getElementById('back-profile')?.addEventListener('click', () => goBack());
+document.getElementById('back-history')?.addEventListener('click', () => goBack());
+document.getElementById('back-profile-edit')?.addEventListener('click', () => goBack());
+document.getElementById('btn-save-profile')?.addEventListener('click', () => saveProfile());
+document.getElementById('btn-cancel-edit')?.addEventListener('click', () => cancelEdit());
+document.getElementById('btn-back-to-menu')?.addEventListener('click', () => showScreen('menu'));
+document.getElementById('edit-profile-trigger')?.addEventListener('click', () => showProfileEdit());
+document.getElementById('menu-avatar-click')?.addEventListener('click', () => showProfileEdit());
+document.getElementById('btn-upload-photo')?.addEventListener('click', () => {
+  document.getElementById('photo-input')?.click();
+});
+document.getElementById('photo-input')?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  showToast('📤 Enviando foto...');
+  await uploadPhoto(file);
+});
+
+window.addEventListener('resize', () => {
+  if (currentScreen === 'game' && gameState.ball) {
+    const canvas = document.getElementById('game-canvas');
+    if (!canvas) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    gameState.ballOrigin = { x: window.innerWidth / 2, y: window.innerHeight * 0.72 };
+    gameState.ballBaseR = Math.min(32, window.innerWidth * 0.09);
+    gameState.hoopR = Math.min(58, window.innerWidth * 0.13);
+    resetGameBall(false);
+    resetGameHoop();
+  }
+});
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Inicialização
+console.log('🚀 App inicializado!');
+if (firebaseReady) {
+  setTimeout(() => escutarRanking(), 100);
+}
+
+// RoundRect helper
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (w < 2 * r) r = w / 2;
+    if (h < 2 * r) r = h / 2;
+    this.moveTo(x+r, y);
+    this.lineTo(x+w-r, y);
+    this.quadraticCurveTo(x+w, y, x+w, y+r);
+    this.lineTo(x+w, y+h-r);
+    this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    this.lineTo(x+r, y+h);
+    this.quadraticCurveTo(x, y+h, x, y+h-r);
+    this.lineTo(x, y+r);
+    this.quadraticCurveTo(x, y, x+r, y);
+    return this;
+  };
+}
+</script>
+</body>
+</html>
