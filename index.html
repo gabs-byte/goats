@@ -11,9 +11,11 @@
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<!-- Anime.js para animações -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
 
 <style>
-  /* ===== ESTILOS ===== */
+  /* ===== ESTILOS EXISTENTES ===== */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
@@ -48,8 +50,11 @@
     background: var(--dark-bg);
     overflow-y: auto;
     overflow-x: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease;
   }
   .screen.active { display: flex; }
+  .screen.fade-out { opacity: 0; transform: scale(0.95); }
+  .screen.fade-in { opacity: 1; transform: scale(1); }
 
   .court-bg {
     position: fixed; inset: 0; pointer-events: none; z-index: 0;
@@ -243,12 +248,42 @@
   .btn-primary:active { transform: scale(0.97); opacity: 0.9; }
   .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
+  .btn-secondary {
+    height: 48px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-secondary:active { transform: scale(0.97); background: rgba(255,255,255,0.08); }
+
   .error-msg {
     color: #FF4444;
     font-size: 13px;
     text-align: center;
     margin-top: 10px;
     min-height: 18px;
+  }
+
+  /* CHANGE PIN SCREEN */
+  #screen-change-pin {
+    justify-content: center;
+    padding: 40px 24px;
+  }
+  .change-pin-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 340px;
+    position: relative; z-index: 1;
+    backdrop-filter: blur(12px);
   }
 
   /* PERFIL EDIT SCREEN */
@@ -619,19 +654,6 @@
     max-width: 340px;
     position: relative; z-index: 1;
   }
-  .btn-secondary {
-    height: 48px;
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 14px;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    letter-spacing: 2px;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-secondary:active { transform: scale(0.97); background: rgba(255,255,255,0.08); }
 
   /* RANKING SCREEN */
   #screen-ranking {
@@ -893,7 +915,21 @@
   }
   .back-btn:active { opacity: 0.7; }
 
-  /* EFFECTS */
+  /* FIRE BALL EFFECT */
+  .fire-ball {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    font-size: 40px;
+    animation: fireAnimation 0.5s ease-out forwards;
+  }
+  @keyframes fireAnimation {
+    0% { transform: scale(0.5); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.8; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  /* PARTICLES */
   .particle {
     position: fixed;
     pointer-events: none;
@@ -1002,6 +1038,22 @@
   }
   .connection-status.online { color: #39FF14; }
   .connection-status.offline { color: #FF4444; }
+
+  /* MUTE BUTTON */
+  .sound-toggle {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid var(--card-border);
+    border-radius: 30px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 1000;
+    color: var(--text-muted);
+  }
+  .sound-toggle:active { transform: scale(0.95); }
 </style>
 </head>
 <body>
@@ -1055,6 +1107,52 @@
     <button class="btn-primary" id="btn-login" disabled>ENTRAR</button>
     <div class="error-msg" id="login-error"></div>
     <div id="login-loading" style="display:none; text-align:center; margin-top:10px;">⏳ Conectando...</div>
+  </div>
+</div>
+
+<!-- CHANGE PIN SCREEN -->
+<div id="screen-change-pin" class="screen">
+  <div class="court-bg"></div>
+  <button class="back-btn" id="back-change-pin">← Voltar</button>
+  <div class="change-pin-card">
+    <h2 style="margin-bottom:20px; font-family:'Bebas Neue'; letter-spacing:2px;">🔐 ALTERAR SENHA</h2>
+    <span class="login-label">SENHA ATUAL</span>
+    <div class="pin-row" id="old-pin-row">
+      <div class="pin-dot" id="old0"></div>
+      <div class="pin-dot" id="old1"></div>
+      <div class="pin-dot" id="old2"></div>
+      <div class="pin-dot" id="old3"></div>
+    </div>
+    <span class="login-label" style="margin-top:20px;">NOVA SENHA</span>
+    <div class="pin-row" id="new-pin-row">
+      <div class="pin-dot" id="new0"></div>
+      <div class="pin-dot" id="new1"></div>
+      <div class="pin-dot" id="new2"></div>
+      <div class="pin-dot" id="new3"></div>
+    </div>
+    <span class="login-label" style="margin-top:20px;">CONFIRMAR NOVA SENHA</span>
+    <div class="pin-row" id="confirm-pin-row">
+      <div class="pin-dot" id="conf0"></div>
+      <div class="pin-dot" id="conf1"></div>
+      <div class="pin-dot" id="conf2"></div>
+      <div class="pin-dot" id="conf3"></div>
+    </div>
+    <div class="numpad" id="change-pin-numpad">
+      <button class="num-btn" data-num="1">1</button>
+      <button class="num-btn" data-num="2">2</button>
+      <button class="num-btn" data-num="3">3</button>
+      <button class="num-btn" data-num="4">4</button>
+      <button class="num-btn" data-num="5">5</button>
+      <button class="num-btn" data-num="6">6</button>
+      <button class="num-btn" data-num="7">7</button>
+      <button class="num-btn" data-num="8">8</button>
+      <button class="num-btn" data-num="9">9</button>
+      <button class="num-btn del" data-del>⌫</button>
+      <button class="num-btn" data-num="0">0</button>
+      <button class="num-btn" style="opacity:0; pointer-events:none"></button>
+    </div>
+    <div class="error-msg" id="pin-change-error"></div>
+    <button class="btn-primary" id="btn-change-pin">ALTERAR SENHA</button>
   </div>
 </div>
 
@@ -1164,8 +1262,8 @@
     <div class="profile-stat"><div class="profile-stat-val" id="p-perfect">0</div><div class="profile-stat-label">Cestas Perf.</div></div>
   </div>
   <div class="medals-section"><div class="medals-title">CONQUISTAS</div><div class="medals-row" id="medals-row"></div></div>
-  <!-- Botão Voltar ao Menu -->
-  <button class="menu-logout" id="btn-back-to-menu" style="margin-top: 20px; background: var(--card-bg); border: 1px solid var(--orange); color: var(--orange);">🏠 Voltar ao Menu</button>
+  <button class="menu-logout" id="btn-change-pin-menu" style="margin-top: 10px;">🔐 Alterar Senha</button>
+  <button class="menu-logout" id="btn-back-to-menu" style="margin-top: 10px; background: var(--card-bg); border: 1px solid var(--orange); color: var(--orange);">🏠 Voltar ao Menu</button>
 </div>
 
 <!-- HISTORY SCREEN -->
@@ -1178,6 +1276,7 @@
 
 <div class="toast" id="toast"></div>
 <div class="connection-status" id="connection-status">📱 Iniciando...</div>
+<div class="sound-toggle" id="sound-toggle">🔊 SOM: ON</div>
 
 <script>
 // ============================================================
@@ -1215,7 +1314,116 @@ try {
 }
 
 // ============================================================
-// DATA LAYER (Local Storage como fallback)
+// SOUND SYSTEM (Síntese de áudio)
+// ============================================================
+let audioCtx = null;
+let soundEnabled = true;
+let bgMusicInterval = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function playBeep(frequency = 440, duration = 0.1, volume = 0.2) {
+  if (!soundEnabled) return;
+  try {
+    initAudio();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.frequency.value = frequency;
+    gainNode.gain.value = volume;
+    oscillator.start();
+    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+    oscillator.stop(audioCtx.currentTime + duration);
+  } catch(e) { console.warn('Audio error:', e); }
+}
+
+function playClickSound() {
+  playBeep(880, 0.05, 0.15);
+}
+
+function playBasketSound(isPerfect = false) {
+  if (isPerfect) {
+    playBeep(523.25, 0.1, 0.3);
+    setTimeout(() => playBeep(659.25, 0.15, 0.3), 100);
+    setTimeout(() => playBeep(783.99, 0.2, 0.3), 200);
+  } else {
+    playBeep(440, 0.1, 0.25);
+    setTimeout(() => playBeep(523.25, 0.15, 0.25), 120);
+  }
+}
+
+function playComboSound(combo) {
+  const baseFreq = 330;
+  const freq = baseFreq + (combo * 20);
+  playBeep(freq, 0.08, 0.35);
+}
+
+function playGameOverSound() {
+  playBeep(293.66, 0.3, 0.4);
+  setTimeout(() => playBeep(261.63, 0.4, 0.4), 300);
+  setTimeout(() => playBeep(220, 0.5, 0.4), 700);
+}
+
+function playPhaseUpSound() {
+  playBeep(523.25, 0.15, 0.3);
+  setTimeout(() => playBeep(659.25, 0.15, 0.3), 150);
+  setTimeout(() => playBeep(783.99, 0.2, 0.3), 300);
+}
+
+function startBackgroundMusic() {
+  if (!soundEnabled) return;
+  if (bgMusicInterval) clearInterval(bgMusicInterval);
+  // Ritmo 55 BPM ≈ intervalo de 1091ms
+  let patternIndex = 0;
+  const pattern = [440, 523.25, 440, 587.33, 523.25, 440, 392, 440];
+  bgMusicInterval = setInterval(() => {
+    if (!soundEnabled) return;
+    try {
+      initAudio();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.frequency.value = pattern[patternIndex % pattern.length];
+      gainNode.gain.value = 0.08;
+      oscillator.start();
+      gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.25);
+      oscillator.stop(audioCtx.currentTime + 0.25);
+      patternIndex++;
+    } catch(e) {}
+  }, 1091);
+}
+
+function stopBackgroundMusic() {
+  if (bgMusicInterval) {
+    clearInterval(bgMusicInterval);
+    bgMusicInterval = null;
+  }
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('sound-toggle');
+  if (btn) {
+    btn.textContent = soundEnabled ? '🔊 SOM: ON' : '🔇 SOM: OFF';
+  }
+  if (!soundEnabled && bgMusicInterval) {
+    stopBackgroundMusic();
+  } else if (soundEnabled && currentScreen === 'menu') {
+    startBackgroundMusic();
+  }
+}
+
+// ============================================================
+// FIREBASE DATA LAYER
 // ============================================================
 const PLAYERS = {
   gabriel: { name: 'Gabriel', pin: '1111', avatar: 'G', avatarClass: 'avatar-g', color: '#FF6B1A', userId: null },
@@ -1224,11 +1432,11 @@ const PLAYERS = {
 };
 
 const PHASES = [
-  { name: 'Cesta parada',       hoopMove: false, timeLimit: 60 },
-  { name: 'Cesta se move',      hoopMove: true,  timeLimit: 60 },
-  { name: 'Tempo reduzido',     hoopMove: true,  timeLimit: 45 },
-  { name: 'Distância maior',    hoopMove: true,  timeLimit: 50 },
-  { name: 'Modo obstáculo',     hoopMove: true,  timeLimit: 45, hasObstacle: true }
+  { name: '🔥 FASE 1: Cesta Parada',           hoopMoveX: false, hoopMoveY: false, timeLimit: 60, hoopScale: 1.0, oscillation: 'none' },
+  { name: '⚡ FASE 2: Cesta Move (Maior)',     hoopMoveX: true,  hoopMoveY: false, timeLimit: 60, hoopScale: 1.3, oscillation: 'none' },
+  { name: '🌀 FASE 3: Cesta Flutuante',        hoopMoveX: false, hoopMoveY: true,  timeLimit: 55, hoopScale: 1.0, oscillation: 'vertical' },
+  { name: '💫 FASE 4: Cesta Oscilante',        hoopMoveX: true,  hoopMoveY: true,  timeLimit: 50, hoopScale: 1.0, oscillation: 'both' },
+  { name: '🏆 FASE FINAL: Contra o Relógio',   hoopMoveX: false, hoopMoveY: false, timeLimit: 30, hoopScale: 1.0, oscillation: 'none', hasObstacle: true }
 ];
 
 const MEDALS_DEF = [
@@ -1237,10 +1445,11 @@ const MEDALS_DEF = [
   { id: 'combo5',       icon: '🔥', label: 'Combo x5',       check: (s) => s.bestCombo >= 5 },
   { id: 'score100',     icon: '💯', label: '100 Pontos',     check: (s) => s.bestScore >= 100 },
   { id: 'score300',     icon: '🚀', label: '300 Pontos',     check: (s) => s.bestScore >= 300 },
-  { id: 'phase3',       icon: '🏅', label: 'Fase 3',         check: (s) => s.phase >= 3 }
+  { id: 'phase3',       icon: '🏅', label: 'Fase 3',         check: (s) => s.phase >= 3 },
+  { id: 'phase5',       icon: '👑', label: 'Fase 5',         check: (s) => s.phase >= 5 }
 ];
 
-// Funções de localStorage (fallback)
+// Funções de localStorage
 function getLocalData() {
   return JSON.parse(localStorage.getItem('goats_local_data') || '{}');
 }
@@ -1251,7 +1460,7 @@ function saveLocalData(data) {
 
 function getPlayerLocalData(playerKey) {
   const all = getLocalData();
-  return all[playerKey] || { bestScore: 0, games: 0, totalBaskets: 0, totalPerfect: 0, bestCombo: 0, phase: 1, medals: [], history: [], photoURL: null, displayName: PLAYERS[playerKey].name };
+  return all[playerKey] || { bestScore: 0, games: 0, totalBaskets: 0, totalPerfect: 0, bestCombo: 0, phase: 1, medals: [], history: [], photoURL: null, displayName: PLAYERS[playerKey].name, customPin: PLAYERS[playerKey].pin };
 }
 
 function savePlayerLocalData(playerKey, data) {
@@ -1261,19 +1470,16 @@ function savePlayerLocalData(playerKey, data) {
 }
 
 // ============================================================
-// FUNÇÕES DE RANKING E PERFIL (SINCRONIZADAS)
+// FUNÇÕES DE RANKING E PERFIL
 // ============================================================
 
-// Salvar pontuação no Firebase
 async function salvarRankingFirebase(playerId, score, combo, phase) {
   if (!firebaseReady || !db) return false;
-  
   try {
     const playerRef = db.ref(`ranking/${playerId}`);
     const snapshot = await playerRef.once('value');
     const currentData = snapshot.val() || {};
     const currentBest = currentData.bestScore || 0;
-    
     if (score > currentBest) {
       await playerRef.update({
         bestScore: score,
@@ -1284,7 +1490,6 @@ async function salvarRankingFirebase(playerId, score, combo, phase) {
         photoURL: currentPlayerData.photoURL || null,
         displayName: currentPlayerData.displayName || PLAYERS[playerId]?.name
       });
-      console.log(`🏆 Ranking atualizado: ${playerId} - ${score} pontos`);
       return true;
     }
     return false;
@@ -1294,22 +1499,15 @@ async function salvarRankingFirebase(playerId, score, combo, phase) {
   }
 }
 
-// Escutar ranking em tempo real
 function escutarRanking() {
   if (!firebaseReady || !db) {
     renderRankingLocal();
     return;
   }
-  
   const rankingRef = db.ref('ranking');
-  
   rankingRef.on('value', (snapshot) => {
     const data = snapshot.val();
-    if (!data) {
-      renderRankingLocal();
-      return;
-    }
-    
+    if (!data) { renderRankingLocal(); return; }
     const players = [];
     for (const [id, info] of Object.entries(data)) {
       players.push({
@@ -1321,136 +1519,91 @@ function escutarRanking() {
         photoURL: info.photoURL || null
       });
     }
-    
     players.sort((a, b) => b.bestScore - a.bestScore);
     renderRanking(players);
-    
-    // Atualiza fotos dos outros jogadores na tela de login
     updateLoginAvatars(players);
-    
-  }, (error) => {
-    console.error('Erro ao escutar ranking:', error);
-    renderRankingLocal();
-  });
+  }, (error) => { renderRankingLocal(); });
 }
 
-// Atualiza os avatares na tela de login com fotos do Firebase
 function updateLoginAvatars(players) {
   for (const player of players) {
-    const playerId = player.id;
-    const avatarDiv = document.getElementById(`avatar-${playerId}`);
+    const avatarDiv = document.getElementById(`avatar-${player.id}`);
     if (avatarDiv && player.photoURL && player.photoURL !== avatarDiv.dataset.photoUrl) {
-      // Se tem foto e é diferente da atual
       avatarDiv.dataset.photoUrl = player.photoURL;
       avatarDiv.innerHTML = `<img src="${player.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-    } else if (avatarDiv && (!player.photoURL || player.photoURL === '')) {
-      // Se não tem foto, mostra a letra
-      avatarDiv.innerHTML = PLAYERS[playerId]?.avatar || playerId.charAt(0).toUpperCase();
     }
   }
 }
 
-// Renderizar ranking (versão Firebase)
 function renderRanking(players) {
   const rankingList = document.getElementById('ranking-list');
   if (!rankingList) return;
-  
   rankingList.innerHTML = '';
-  
   if (!players || players.length === 0) {
     rankingList.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px;">Nenhum jogador no ranking</div>';
     return;
   }
-  
   const medals = ['🥇', '🥈', '🥉'];
-  
   players.slice(0, 10).forEach((player, index) => {
     const isCurrent = currentPlayer && player.id === currentPlayer;
     const avatarClass = PLAYERS[player.id]?.avatarClass || 'avatar-g';
     const avatarChar = PLAYERS[player.id]?.avatar || player.name.charAt(0);
-    
     const card = document.createElement('div');
     card.className = `rank-card ${index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : ''}`;
     card.innerHTML = `
       <div class="rank-pos">${medals[index] || (index + 1)}</div>
-      <div class="rank-avatar ${avatarClass}">
-        ${player.photoURL ? `<img src="${player.photoURL}">` : avatarChar}
-      </div>
-      <div class="rank-info">
-        <div class="rank-name" style="color:${isCurrent ? '#FF6B1A' : '#fff'}">${player.name}${isCurrent ? ' ◀' : ''}</div>
-        <div class="rank-details">Combo x${player.bestCombo || 0} · Fase ${player.phase || 1}</div>
-      </div>
+      <div class="rank-avatar ${avatarClass}">${player.photoURL ? `<img src="${player.photoURL}">` : avatarChar}</div>
+      <div class="rank-info"><div class="rank-name" style="color:${isCurrent ? '#FF6B1A' : '#fff'}">${player.name}${isCurrent ? ' ◀' : ''}</div><div class="rank-details">Combo x${player.bestCombo || 0} · Fase ${player.phase || 1}</div></div>
       <div class="rank-score">${player.bestScore || 0}</div>
     `;
     rankingList.appendChild(card);
   });
 }
 
-// Fallback: ranking local
 function renderRankingLocal() {
   const rankingList = document.getElementById('ranking-list');
   if (!rankingList) return;
-  
   rankingList.innerHTML = '';
-  
   const players = [];
   for (const [id, player] of Object.entries(PLAYERS)) {
     const data = getPlayerLocalData(id);
-    players.push({
-      id: id,
-      name: data.displayName || player.name,
-      bestScore: data.bestScore || 0,
-      bestCombo: data.bestCombo || 0,
-      phase: data.phase || 1,
-      photoURL: data.photoURL || null
-    });
+    players.push({ id: id, name: data.displayName || player.name, bestScore: data.bestScore || 0, bestCombo: data.bestCombo || 0, phase: data.phase || 1, photoURL: data.photoURL || null });
   }
-  
   players.sort((a, b) => b.bestScore - a.bestScore);
-  
   const medals = ['🥇', '🥈', '🥉'];
-  
   players.slice(0, 10).forEach((player, index) => {
     const isCurrent = currentPlayer && player.id === currentPlayer;
     const avatarClass = PLAYERS[player.id]?.avatarClass || 'avatar-g';
     const avatarChar = PLAYERS[player.id]?.avatar || player.name.charAt(0);
-    
     const card = document.createElement('div');
     card.className = `rank-card ${index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : ''}`;
     card.innerHTML = `
       <div class="rank-pos">${medals[index] || (index + 1)}</div>
-      <div class="rank-avatar ${avatarClass}">
-        ${player.photoURL ? `<img src="${player.photoURL}">` : avatarChar}
-      </div>
-      <div class="rank-info">
-        <div class="rank-name" style="color:${isCurrent ? '#FF6B1A' : '#fff'}">${player.name}${isCurrent ? ' ◀' : ''}</div>
-        <div class="rank-details">Combo x${player.bestCombo || 0} · Fase ${player.phase || 1}</div>
-      </div>
+      <div class="rank-avatar ${avatarClass}">${player.photoURL ? `<img src="${player.photoURL}">` : avatarChar}</div>
+      <div class="rank-info"><div class="rank-name" style="color:${isCurrent ? '#FF6B1A' : '#fff'}">${player.name}${isCurrent ? ' ◀' : ''}</div><div class="rank-details">Combo x${player.bestCombo || 0} · Fase ${player.phase || 1}</div></div>
       <div class="rank-score">${player.bestScore || 0}</div>
     `;
     rankingList.appendChild(card);
   });
 }
 
-// Função para salvar no Firebase e local (chamada no endGame)
 async function syncRankingAfterGame(playerKey, score, combo, phase) {
   savePlayerLocalData(playerKey, currentPlayerData);
-  
-  if (firebaseReady) {
-    salvarRankingFirebase(playerKey, score, combo, phase).catch(err => {
-      console.warn('Erro no save Firebase (não crítico):', err);
-    });
-  }
+  if (firebaseReady) { salvarRankingFirebase(playerKey, score, combo, phase).catch(err => console.warn(err)); }
 }
 
 // ============================================================
 // APP STATE
 // ============================================================
 let currentPlayer = null;
-let currentPlayerData = { bestScore: 0, games: 0, totalBaskets: 0, totalPerfect: 0, bestCombo: 0, phase: 1, medals: [], history: [], photoURL: null, displayName: '' };
+let currentPlayerData = { bestScore: 0, games: 0, totalBaskets: 0, totalPerfect: 0, bestCombo: 0, phase: 1, medals: [], history: [], photoURL: null, displayName: '', customPin: '' };
 let currentScreen = 'login';
 let pinBuffer = '';
 let selectedPlayerBtn = null;
+
+// Change PIN state
+let changePinStep = 'old';
+let oldPinBuffer = '', newPinBuffer = '', confirmPinBuffer = '';
 
 // ============================================================
 // UI FUNCTIONS
@@ -1458,7 +1611,6 @@ let selectedPlayerBtn = null;
 
 function updateUIAvatar() {
   const hasPhoto = currentPlayerData.photoURL;
-  
   const menuAvatarInitial = document.getElementById('menu-avatar-initial');
   const menuAvatarImg = document.getElementById('menu-avatar-img');
   if (hasPhoto) {
@@ -1470,7 +1622,6 @@ function updateUIAvatar() {
     menuAvatarImg.style.display = 'none';
     menuAvatarInitial.textContent = PLAYERS[currentPlayer].avatar;
   }
-  
   const profileAvatarText = document.getElementById('profile-avatar-text');
   const profileAvatarImg = document.getElementById('profile-avatar-img');
   if (hasPhoto) {
@@ -1484,19 +1635,15 @@ function updateUIAvatar() {
   }
 }
 
-// Calcula a posição do jogador no ranking (1, 2 ou 3)
 function getPlayerRankPosition() {
   if (!currentPlayer) return '?';
-  
   const allScores = [];
   for (const [id, player] of Object.entries(PLAYERS)) {
     const data = getPlayerLocalData(id);
     allScores.push({ id, score: data.bestScore || 0 });
   }
-  
   allScores.sort((a, b) => b.score - a.score);
-  const position = allScores.findIndex(p => p.id === currentPlayer) + 1;
-  return position;
+  return allScores.findIndex(p => p.id === currentPlayer) + 1;
 }
 
 function updateRankBadge() {
@@ -1508,13 +1655,12 @@ function updateRankBadge() {
 
 function updateMenuUI() {
   if (!currentPlayer) return;
-  
   document.getElementById('menu-player-display').textContent = (currentPlayerData.displayName || PLAYERS[currentPlayer].name).toUpperCase();
   document.getElementById('menu-best').textContent = currentPlayerData.bestScore;
   document.getElementById('menu-games').textContent = currentPlayerData.games;
   document.getElementById('menu-phase').textContent = currentPlayerData.phase;
   const phaseIdx = Math.min(currentPlayerData.phase - 1, PHASES.length - 1);
-  document.getElementById('menu-phase-text').textContent = `Fase ${currentPlayerData.phase} — ${PHASES[phaseIdx].name}`;
+  document.getElementById('menu-phase-text').textContent = `${PHASES[phaseIdx].name}`;
   updateUIAvatar();
 }
 
@@ -1527,29 +1673,24 @@ function updateProfileUI() {
   document.getElementById('p-streak').textContent = (currentPlayerData.bestCombo || 0) + 'x';
   document.getElementById('p-perfect').textContent = currentPlayerData.totalPerfect;
   updateRankBadge();
-  
   const medalRow = document.getElementById('medals-row');
   medalRow.innerHTML = '';
   MEDALS_DEF.forEach(m => {
     const earned = (currentPlayerData.medals || []).includes(m.id);
     medalRow.innerHTML += `<div class="medal ${earned ? 'earned' : ''}" style="${!earned ? 'opacity:0.3' : ''}"><span class="medal-icon">${m.icon}</span>${m.label}</div>`;
   });
-  
   updateUIAvatar();
 }
 
 function buildRanking() {
-  if (firebaseReady && db) {
-    escutarRanking();
-  } else {
-    renderRankingLocal();
-  }
+  if (firebaseReady && db) { escutarRanking(); } else { renderRankingLocal(); }
 }
 
 // ============================================================
 // LOGIN
 // ============================================================
 function selectPlayer(btn) {
+  playClickSound();
   document.querySelectorAll('.player-btn').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
   selectedPlayerBtn = btn;
@@ -1566,12 +1707,14 @@ function pinInput(digit) {
   pinBuffer += digit;
   updatePinDots();
   if (pinBuffer.length === 4) document.getElementById('btn-login').disabled = false;
+  playClickSound();
 }
 
 function pinDelete() {
   pinBuffer = pinBuffer.slice(0, -1);
   updatePinDots();
   document.getElementById('btn-login').disabled = true;
+  playClickSound();
 }
 
 function updatePinDots() {
@@ -1584,7 +1727,6 @@ function updatePinDots() {
 async function loadPlayerProfile(playerKey) {
   let localData = getPlayerLocalData(playerKey);
   currentPlayerData = { ...localData };
-  
   if (firebaseReady && db) {
     try {
       const snapshot = await db.ref(`ranking/${playerKey}`).once('value');
@@ -1600,42 +1742,32 @@ async function loadPlayerProfile(playerKey) {
           medals: localData.medals || [],
           history: localData.history || [],
           photoURL: data.photoURL || localData.photoURL,
-          displayName: data.displayName || localData.displayName || PLAYERS[playerKey].name
+          displayName: data.displayName || localData.displayName || PLAYERS[playerKey].name,
+          customPin: localData.customPin || PLAYERS[playerKey].pin
         };
       }
-    } catch (e) {
-      console.warn('Erro ao carregar do Firebase:', e);
-    }
+    } catch(e) {}
   }
-  
-  if (!currentPlayerData.displayName) {
-    currentPlayerData.displayName = PLAYERS[playerKey].name;
-  }
-  
-  // Salva localmente para consistência
+  if (!currentPlayerData.displayName) currentPlayerData.displayName = PLAYERS[playerKey].name;
+  if (!currentPlayerData.customPin) currentPlayerData.customPin = PLAYERS[playerKey].pin;
   savePlayerLocalData(playerKey, currentPlayerData);
 }
 
 async function doLogin() {
-  if (!currentPlayer) { 
-    document.getElementById('login-error').textContent = 'Selecione um jogador!'; 
-    return; 
-  }
-  
-  if (PLAYERS[currentPlayer].pin !== pinBuffer) {
+  playClickSound();
+  if (!currentPlayer) { document.getElementById('login-error').textContent = 'Selecione um jogador!'; return; }
+  const expectedPin = currentPlayerData.customPin || PLAYERS[currentPlayer].pin;
+  if (pinBuffer !== expectedPin) {
     document.getElementById('login-error').textContent = 'PIN incorreto. Tente novamente.';
     pinBuffer = '';
     updatePinDots();
     document.getElementById('btn-login').disabled = true;
     return;
   }
-  
   const loadingEl = document.getElementById('login-loading');
   if (loadingEl) loadingEl.style.display = 'block';
   document.getElementById('btn-login').disabled = true;
-  
   await loadPlayerProfile(currentPlayer);
-  
   document.getElementById('login-error').textContent = '';
   pinBuffer = '';
   updatePinDots();
@@ -1643,15 +1775,15 @@ async function doLogin() {
   showScreen('menu');
   updateMenuUI();
   updateRankBadge();
-  
-  if (firebaseReady) {
-    setTimeout(() => escutarRanking(), 100);
-  }
+  startBackgroundMusic();
+  if (firebaseReady) setTimeout(() => escutarRanking(), 100);
 }
 
 function doLogout() {
+  playClickSound();
   if (window.gameInterval) clearInterval(window.gameInterval);
   if (window.gameAnimFrame) cancelAnimationFrame(window.gameAnimFrame);
+  stopBackgroundMusic();
   currentPlayer = null;
   selectedPlayerBtn = null;
   document.querySelectorAll('.player-btn').forEach(b => b.classList.remove('selected'));
@@ -1661,57 +1793,104 @@ function doLogout() {
 }
 
 // ============================================================
-// PROFILE EDIT
+// CHANGE PIN
 // ============================================================
-function showProfileEdit() {
-  const nameInput = document.getElementById('profile-name-edit');
-  if (nameInput) nameInput.value = currentPlayerData.displayName || PLAYERS[currentPlayer].name;
-  
-  const previewText = document.getElementById('preview-text');
-  const previewImg = document.getElementById('preview-img');
-  
-  if (currentPlayerData.photoURL) {
-    if (previewText) previewText.style.display = 'none';
-    if (previewImg) {
-      previewImg.style.display = 'block';
-      previewImg.src = currentPlayerData.photoURL;
-    }
-  } else {
-    if (previewText) {
-      previewText.style.display = 'flex';
-      previewText.textContent = PLAYERS[currentPlayer].avatar;
-    }
-    if (previewImg) previewImg.style.display = 'none';
-  }
-  
-  showScreen('profile-edit');
+function startChangePin() {
+  playClickSound();
+  changePinStep = 'old';
+  oldPinBuffer = '';
+  newPinBuffer = '';
+  confirmPinBuffer = '';
+  updateChangePinDots();
+  document.getElementById('pin-change-error').textContent = '';
+  showScreen('change-pin');
 }
 
-function cancelEdit() {
+function updateChangePinDots() {
+  for (let i=0; i<4; i++) {
+    document.getElementById(`old${i}`)?.classList.toggle('filled', i < oldPinBuffer.length);
+    document.getElementById(`new${i}`)?.classList.toggle('filled', i < newPinBuffer.length);
+    document.getElementById(`conf${i}`)?.classList.toggle('filled', i < confirmPinBuffer.length);
+  }
+}
+
+function changePinInput(digit) {
+  if (changePinStep === 'old' && oldPinBuffer.length < 4) oldPinBuffer += digit;
+  else if (changePinStep === 'new' && newPinBuffer.length < 4) newPinBuffer += digit;
+  else if (changePinStep === 'confirm' && confirmPinBuffer.length < 4) confirmPinBuffer += digit;
+  updateChangePinDots();
+  if (changePinStep === 'old' && oldPinBuffer.length === 4) {
+    changePinStep = 'new';
+    document.getElementById('pin-change-error').textContent = 'Digite a NOVA senha (4 dígitos)';
+  } else if (changePinStep === 'new' && newPinBuffer.length === 4) {
+    changePinStep = 'confirm';
+    document.getElementById('pin-change-error').textContent = 'Confirme a NOVA senha';
+  }
+  playClickSound();
+}
+
+function changePinDelete() {
+  if (changePinStep === 'old' && oldPinBuffer.length > 0) oldPinBuffer = oldPinBuffer.slice(0,-1);
+  else if (changePinStep === 'new' && newPinBuffer.length > 0) newPinBuffer = newPinBuffer.slice(0,-1);
+  else if (changePinStep === 'confirm' && confirmPinBuffer.length > 0) confirmPinBuffer = confirmPinBuffer.slice(0,-1);
+  updateChangePinDots();
+  playClickSound();
+}
+
+async function confirmChangePin() {
+  const expectedOldPin = currentPlayerData.customPin || PLAYERS[currentPlayer].pin;
+  if (oldPinBuffer !== expectedOldPin) {
+    document.getElementById('pin-change-error').textContent = 'Senha atual incorreta!';
+    return;
+  }
+  if (newPinBuffer.length !== 4) {
+    document.getElementById('pin-change-error').textContent = 'Nova senha deve ter 4 dígitos';
+    return;
+  }
+  if (newPinBuffer !== confirmPinBuffer) {
+    document.getElementById('pin-change-error').textContent = 'As novas senhas não coincidem!';
+    return;
+  }
+  currentPlayerData.customPin = newPinBuffer;
+  savePlayerLocalData(currentPlayer, currentPlayerData);
+  if (firebaseReady && db) {
+    try { await db.ref(`ranking/${currentPlayer}`).update({ customPin: newPinBuffer }); } catch(e) {}
+  }
+  showToast('✅ Senha alterada com sucesso!');
   showScreen('profile');
   updateProfileUI();
 }
 
+// ============================================================
+// PROFILE EDIT
+// ============================================================
+function showProfileEdit() {
+  playClickSound();
+  document.getElementById('profile-name-edit').value = currentPlayerData.displayName || PLAYERS[currentPlayer].name;
+  const previewText = document.getElementById('preview-text');
+  const previewImg = document.getElementById('preview-img');
+  if (currentPlayerData.photoURL) {
+    previewText.style.display = 'none';
+    previewImg.style.display = 'block';
+    previewImg.src = currentPlayerData.photoURL;
+  } else {
+    previewText.style.display = 'flex';
+    previewImg.style.display = 'none';
+    previewText.textContent = PLAYERS[currentPlayer].avatar;
+  }
+  showScreen('profile-edit');
+}
+
+function cancelEdit() { playClickSound(); showScreen('profile'); updateProfileUI(); }
+
 async function saveProfile() {
+  playClickSound();
   const newName = document.getElementById('profile-name-edit')?.value.trim();
-  if (newName) {
-    currentPlayerData.displayName = newName;
-  }
-  
+  if (newName) currentPlayerData.displayName = newName;
   savePlayerLocalData(currentPlayer, currentPlayerData);
-  
   if (firebaseReady && db) {
-    try {
-      await db.ref(`ranking/${currentPlayer}`).update({
-        displayName: currentPlayerData.displayName,
-        photoURL: currentPlayerData.photoURL,
-        updatedAt: Date.now()
-      });
-    } catch (e) {
-      console.warn('Erro ao salvar perfil no Firebase:', e);
-    }
+    try { await db.ref(`ranking/${currentPlayer}`).update({ displayName: currentPlayerData.displayName, photoURL: currentPlayerData.photoURL, updatedAt: Date.now() }); } catch(e) {}
   }
-  
   showScreen('profile');
   updateProfileUI();
   updateMenuUI();
@@ -1720,91 +1899,95 @@ async function saveProfile() {
 
 async function uploadPhoto(file) {
   if (!currentPlayer) return null;
-  
   const reader = new FileReader();
-  const photoURL = await new Promise((resolve) => {
-    reader.onloadend = () => {
-      const base64 = reader.result;
-      resolve(base64);
-    };
-    reader.readAsDataURL(file);
-  });
-  
+  const photoURL = await new Promise((resolve) => { reader.onloadend = () => { resolve(reader.result); }; reader.readAsDataURL(file); });
   currentPlayerData.photoURL = photoURL;
   savePlayerLocalData(currentPlayer, currentPlayerData);
-  
   if (firebaseReady && db) {
-    try {
-      await db.ref(`ranking/${currentPlayer}`).update({
-        photoURL: photoURL,
-        updatedAt: Date.now()
-      });
-    } catch (e) {
-      console.warn('Erro ao salvar foto no Firebase:', e);
-    }
+    try { await db.ref(`ranking/${currentPlayer}`).update({ photoURL: photoURL, updatedAt: Date.now() }); } catch(e) {}
   }
-  
-  // [AJUSTE] Volta para tela de perfil automaticamente
   showScreen('profile');
   updateProfileUI();
   updateMenuUI();
   showToast('✅ Foto atualizada!');
-  
   return photoURL;
 }
 
 // ============================================================
-// NAVIGATION
+// NAVIGATION COM ANIMAÇÃO
 // ============================================================
-let prevScreen = 'menu';
+let prevScreenNav = 'menu';
 
-function showScreen(name) {
-  prevScreen = currentScreen;
-  currentScreen = name;
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const screenEl = document.getElementById('screen-' + name);
-  if (screenEl) screenEl.classList.add('active');
-  
-  if (name === 'ranking') buildRanking();
-  if (name === 'profile') updateProfileUI();
-  if (name === 'history') buildHistory();
-  if (name === 'menu') updateMenuUI();
+function animateScreenTransition(oldScreen, newScreen, callback) {
+  const oldEl = document.getElementById(`screen-${oldScreen}`);
+  const newEl = document.getElementById(`screen-${newScreen}`);
+  if (!oldEl || !newEl) { if(callback) callback(); return; }
+  anime({
+    targets: oldEl,
+    opacity: [1, 0],
+    scale: [1, 0.95],
+    duration: 200,
+    easing: 'easeOutQuad',
+    complete: () => {
+      oldEl.classList.remove('active');
+      newEl.classList.add('active');
+      anime({
+        targets: newEl,
+        opacity: [0, 1],
+        scale: [0.95, 1],
+        duration: 200,
+        easing: 'easeOutQuad',
+        complete: () => { if(callback) callback(); }
+      });
+    }
+  });
 }
 
-function goBack() { showScreen(prevScreen === currentScreen ? 'menu' : prevScreen); }
+function showScreen(name) {
+  if (currentScreen === name) return;
+  const previousScreen = currentScreen;
+  currentScreen = name;
+  animateScreenTransition(previousScreen, name, () => {
+    if (name === 'ranking') buildRanking();
+    if (name === 'profile') updateProfileUI();
+    if (name === 'history') buildHistory();
+    if (name === 'menu') { updateMenuUI(); startBackgroundMusic(); }
+    if (name === 'login') stopBackgroundMusic();
+  });
+}
+
+function goBack() { showScreen(prevScreenNav === currentScreen ? 'menu' : prevScreenNav); }
+
+// FIRE BALL EFFECT
+function showFireBall(x, y) {
+  const el = document.createElement('div');
+  el.className = 'fire-ball';
+  el.textContent = '🔥';
+  el.style.left = (x - 20) + 'px';
+  el.style.top = (y - 20) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 500);
+}
 
 // ============================================================
-// GAME ENGINE (COMPLETO)
+// GAME ENGINE
 // ============================================================
 let gameState = {};
 let gameAnimFrame = null;
 let gameInterval = null;
 
 function startGame() {
+  playClickSound();
+  stopBackgroundMusic();
   showScreen('game');
   const phaseIdx = Math.min(currentPlayerData.phase - 1, PHASES.length - 1);
   const phase = PHASES[phaseIdx];
-
   gameState = {
-    score: 0,
-    baskets: 0,
-    perfect: 0,
-    combo: 0,
-    bestCombo: 0,
-    timeLeft: phase.timeLimit,
-    phase: currentPlayerData.phase,
-    phaseData: phase,
-    active: true,
-    dragging: false,
-    dragStart: null,
-    dragCurrent: null,
-    ballInFlight: false,
-    hoopState: 'idle',
-    rimTouched: false,
-    shots: 0,
-    ballScale: 1.0
+    score: 0, baskets: 0, perfect: 0, combo: 0, bestCombo: 0,
+    timeLeft: phase.timeLimit, phase: currentPlayerData.phase, phaseData: phase,
+    active: true, dragging: false, dragStart: null, dragCurrent: null,
+    ballInFlight: false, hoopState: 'idle', rimTouched: false, shots: 0, ballScale: 1.0
   };
-
   initCanvas();
   showPhaseBanner(currentPlayerData.phase);
   startGameTimer();
@@ -1812,18 +1995,13 @@ function startGame() {
 
 function initCanvas() {
   const canvas = document.getElementById('game-canvas');
-  const W = window.innerWidth;
-  const H = window.innerHeight;
-  canvas.width = W;
-  canvas.height = H;
-
+  const W = window.innerWidth, H = window.innerHeight;
+  canvas.width = W; canvas.height = H;
   const BASE_BALL_R = Math.min(32, W * 0.09);
   const HOOP_R = Math.min(58, W * 0.13);
-
   gameState.ballBaseR = BASE_BALL_R;
-  gameState.hoopR = HOOP_R;
+  gameState.hoopR = HOOP_R * (gameState.phaseData.hoopScale || 1.0);
   gameState.ballOrigin = { x: W / 2, y: H * 0.72 };
-
   resetGameBall();
   resetGameHoop();
   gameState.active = true;
@@ -1834,107 +2012,64 @@ function initCanvas() {
 
 function resetGameBall(resetCombo = true) {
   gameState.ballScale = 1.4;
-  
   gameState.ball = {
-    x: gameState.ballOrigin.x,
-    y: gameState.ballOrigin.y,
-    baseR: gameState.ballBaseR,
-    r: gameState.ballBaseR * gameState.ballScale,
+    x: gameState.ballOrigin.x, y: gameState.ballOrigin.y,
+    baseR: gameState.ballBaseR, r: gameState.ballBaseR * gameState.ballScale,
     vx: 0, vy: 0, rot: 0
   };
-  gameState.ballInFlight = false;
-  gameState.dragging = false;
-  gameState.hoopState = 'idle';
-  gameState.rimTouched = false;
-  if (resetCombo) {
-    gameState.combo = 0;
-    updateComboDisplay();
-  }
+  gameState.ballInFlight = false; gameState.dragging = false;
+  gameState.hoopState = 'idle'; gameState.rimTouched = false;
+  if (resetCombo) { gameState.combo = 0; updateComboDisplay(); }
 }
 
 function resetGameHoop() {
-  const canvas = document.getElementById('game-canvas');
-  const W = canvas.width, H = canvas.height;
+  const canvas = document.getElementById('game-canvas'), W = canvas.width, H = canvas.height;
   const r = gameState.hoopR;
-
+  const boardW = Math.min(70, W * 0.2), boardH = Math.min(100, H * 0.16);
   gameState.hoop = {
-    x: W / 2,
-    y: H * 0.28,
-    r: r,
-    vx: gameState.phaseData.hoopMove ? 2.2 : 0
+    x: W / 2, y: H * 0.28, r: r,
+    boardX: W / 2 - boardW / 2, boardY: H * 0.28 - boardH - 15,
+    boardW: boardW, boardH: boardH,
+    vx: gameState.phaseData.hoopMoveX ? (Math.random() > 0.5 ? 2.2 : -2.2) : 0,
+    vy: gameState.phaseData.hoopMoveY ? (Math.random() > 0.5 ? 1.5 : -1.5) : 0,
+    initY: H * 0.28,
+    oscillationY: 0
   };
-
-  if (gameState.phaseData.hasObstacle) {
-    gameState.obstacle = {
-      x: W * 0.3,
-      y: H * 0.5,
-      w: W * 0.25,
-      h: H * 0.022,
-      vx: 2
-    };
-  } else {
-    gameState.obstacle = null;
-  }
+  gameState.obstacle = gameState.phaseData.hasObstacle ? { x: W * 0.3, y: H * 0.5, w: W * 0.25, h: H * 0.022, vx: 2 } : null;
 }
 
 function setupGameEvents() {
   const canvas = document.getElementById('game-canvas');
-
   function getPos(e) {
     const rect = canvas.getBoundingClientRect();
     const src = e.touches ? e.touches[0] : e;
-    return {
-      x: (src.clientX - rect.left) * (canvas.width / rect.width),
-      y: (src.clientY - rect.top) * (canvas.height / rect.height)
-    };
+    return { x: (src.clientX - rect.left) * (canvas.width / rect.width), y: (src.clientY - rect.top) * (canvas.height / rect.height) };
   }
-
   function onStart(e) {
     e.preventDefault();
     if (gameState.ballInFlight || !gameState.active) return;
-    const pos = getPos(e);
-    const b = gameState.ball;
-    const dx = pos.x - b.x, dy = pos.y - b.y;
-    if (Math.hypot(dx, dy) < b.r * 3) {
+    const pos = getPos(e), b = gameState.ball;
+    if (Math.hypot(pos.x - b.x, pos.y - b.y) < b.r * 3) {
       gameState.dragging = true;
       gameState.dragStart = { x: b.x, y: b.y };
       gameState.dragCurrent = { x: pos.x, y: pos.y };
+      playClickSound();
     }
   }
-
-  function onMove(e) {
-    if (!gameState.dragging) return;
-    e.preventDefault();
-    gameState.dragCurrent = getPos(e);
-  }
-
+  function onMove(e) { if (gameState.dragging) { e.preventDefault(); gameState.dragCurrent = getPos(e); } }
   function onEnd(e) {
     if (!gameState.dragging || !gameState.active) return;
     gameState.dragging = false;
     const ds = gameState.dragStart, dc = gameState.dragCurrent;
-    const dx = ds.x - dc.x, dy = ds.y - dc.y;
-    const dist = Math.hypot(dx, dy);
+    const dx = ds.x - dc.x, dy = ds.y - dc.y, dist = Math.hypot(dx, dy);
     if (dist < 15) return;
-    
-    const maxPower = 200;
-    const power = Math.min(dist, maxPower);
-    const angle = Math.atan2(dy, dx);
-    const speed = (power / maxPower) * 28;
-    
-    gameState.ball.vx = Math.cos(angle) * speed;
-    gameState.ball.vy = Math.sin(angle) * speed;
-    gameState.ballInFlight = true;
-    gameState.hoopState = 'idle';
-    gameState.rimTouched = false;
-    gameState.shots++;
+    const maxPower = 200, power = Math.min(dist, maxPower), angle = Math.atan2(dy, dx), speed = (power / maxPower) * 28;
+    gameState.ball.vx = Math.cos(angle) * speed; gameState.ball.vy = Math.sin(angle) * speed;
+    gameState.ballInFlight = true; gameState.hoopState = 'idle'; gameState.rimTouched = false; gameState.shots++;
+    playClickSound();
   }
-
-  canvas.ontouchstart = onStart;
-  canvas.ontouchmove = onMove;
-  canvas.ontouchend = onEnd;
-  canvas.onmousedown = onStart;
-  window.onmousemove = onMove;
-  window.onmouseup = onEnd;
+  canvas.ontouchstart = onStart; canvas.ontouchmove = onMove; canvas.ontouchend = onEnd;
+  canvas.onmousedown = onStart; window.onmousemove = onMove; window.onmouseup = onEnd;
 }
 
 function startGameTimer() {
@@ -1953,60 +2088,36 @@ function endGame() {
   gameState.active = false;
   if (gameInterval) clearInterval(gameInterval);
   if (gameAnimFrame) cancelAnimationFrame(gameAnimFrame);
-  
+  playGameOverSound();
   currentPlayerData.bestScore = Math.max(currentPlayerData.bestScore, gameState.score);
   currentPlayerData.games++;
   currentPlayerData.totalBaskets += gameState.baskets;
   currentPlayerData.totalPerfect += gameState.perfect;
   currentPlayerData.bestCombo = Math.max(currentPlayerData.bestCombo || 0, gameState.bestCombo);
-  
   const phaseThreshold = currentPlayerData.phase * 70;
-  if (gameState.score >= phaseThreshold && currentPlayerData.phase < PHASES.length) {
-    currentPlayerData.phase++;
-  }
-  
+  if (gameState.score >= phaseThreshold && currentPlayerData.phase < PHASES.length) currentPlayerData.phase++;
   currentPlayerData.history = currentPlayerData.history || [];
-  currentPlayerData.history.unshift({
-    date: new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }),
-    time: new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }),
-    score: gameState.score,
-    baskets: gameState.baskets,
-    phase: gameState.phase
-  });
+  currentPlayerData.history.unshift({ date: new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), time: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}), score: gameState.score, baskets: gameState.baskets, phase: gameState.phase });
   currentPlayerData.history = currentPlayerData.history.slice(0, 20);
-  
-  MEDALS_DEF.forEach(m => {
-    if (!(currentPlayerData.medals || []).includes(m.id) && m.check(currentPlayerData)) {
-      currentPlayerData.medals = currentPlayerData.medals || [];
-      currentPlayerData.medals.push(m.id);
-      showToast(`🏅 Conquista: ${m.label}!`);
-    }
-  });
-  
+  MEDALS_DEF.forEach(m => { if (!(currentPlayerData.medals || []).includes(m.id) && m.check(currentPlayerData)) { currentPlayerData.medals = currentPlayerData.medals || []; currentPlayerData.medals.push(m.id); showToast(`🏅 Conquista: ${m.label}!`); } });
   syncRankingAfterGame(currentPlayer, gameState.score, gameState.bestCombo, currentPlayerData.phase);
-  
-  const resultName = document.getElementById('result-player-name');
-  const resultScore = document.getElementById('result-score');
-  const resultBaskets = document.getElementById('result-baskets');
-  const resultPerfect = document.getElementById('result-perfect');
-  const resultBestCombo = document.getElementById('result-best-combo');
-  const resultRecord = document.getElementById('result-record');
-  
-  if (resultName) resultName.textContent = (currentPlayerData.displayName || PLAYERS[currentPlayer].name).toUpperCase();
-  if (resultScore) resultScore.textContent = gameState.score;
-  if (resultBaskets) resultBaskets.textContent = gameState.baskets;
-  if (resultPerfect) resultPerfect.textContent = gameState.perfect;
-  if (resultBestCombo) resultBestCombo.textContent = gameState.bestCombo + 'x';
-  if (resultRecord) resultRecord.textContent = (gameState.score > (currentPlayerData.bestScore - gameState.score)) ? '🎉 NOVO RECORDE PESSOAL!' : '';
-  
+  document.getElementById('result-player-name').textContent = (currentPlayerData.displayName || PLAYERS[currentPlayer].name).toUpperCase();
+  document.getElementById('result-score').textContent = gameState.score;
+  document.getElementById('result-baskets').textContent = gameState.baskets;
+  document.getElementById('result-perfect').textContent = gameState.perfect;
+  document.getElementById('result-best-combo').textContent = gameState.bestCombo + 'x';
+  document.getElementById('result-record').textContent = (gameState.score > (currentPlayerData.bestScore - gameState.score)) ? '🎉 NOVO RECORDE PESSOAL!' : '';
   showScreen('result');
+  startBackgroundMusic();
 }
 
 function exitGame() {
+  playClickSound();
   gameState.active = false;
   if (gameInterval) clearInterval(gameInterval);
   if (gameAnimFrame) cancelAnimationFrame(gameAnimFrame);
   showScreen('menu');
+  startBackgroundMusic();
 }
 
 function gameLoop() {
@@ -2014,202 +2125,97 @@ function gameLoop() {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-
   ctx.clearRect(0, 0, W, H);
   drawCourt(ctx, W, H);
-
-  if (!gameState.active) {
-    gameAnimFrame = requestAnimationFrame(gameLoop);
-    return;
-  }
-
-  if (gameState.phaseData.hoopMove && gameState.hoop) {
-    gameState.hoop.x += gameState.hoop.vx;
-    const margin = gameState.hoop.r + 30;
-    if (gameState.hoop.x < margin || gameState.hoop.x > W - margin) {
-      gameState.hoop.vx *= -1;
+  if (!gameState.active) { gameAnimFrame = requestAnimationFrame(gameLoop); return; }
+  // Movimento do aro
+  if (gameState.hoop) {
+    if (gameState.phaseData.hoopMoveX) {
+      gameState.hoop.x += gameState.hoop.vx;
+      const margin = gameState.hoop.r + 30;
+      if (gameState.hoop.x < margin || gameState.hoop.x > W - margin) gameState.hoop.vx *= -1;
     }
+    if (gameState.phaseData.hoopMoveY) {
+      gameState.hoop.y += gameState.hoop.vy;
+      const marginY = 50;
+      if (gameState.hoop.y < marginY || gameState.hoop.y > H * 0.45) gameState.hoop.vy *= -1;
+    } else {
+      if (gameState.phaseData.oscillation === 'vertical') {
+        gameState.hoop.oscillationY = (gameState.hoop.oscillationY || 0) + 0.05;
+        gameState.hoop.y = gameState.hoop.initY + Math.sin(gameState.hoop.oscillationY) * 40;
+      } else if (gameState.phaseData.oscillation === 'both') {
+        gameState.hoop.oscillationY = (gameState.hoop.oscillationY || 0) + 0.05;
+        gameState.hoop.y = gameState.hoop.initY + Math.sin(gameState.hoop.oscillationY) * 30;
+      }
+    }
+    gameState.hoop.boardX = gameState.hoop.x - gameState.hoop.boardW / 2;
+    gameState.hoop.boardY = gameState.hoop.y - gameState.hoop.boardH - 15;
   }
-
   if (gameState.obstacle) {
     gameState.obstacle.x += gameState.obstacle.vx;
-    if (gameState.obstacle.x < 20 || gameState.obstacle.x + gameState.obstacle.w > W - 20) {
-      gameState.obstacle.vx *= -1;
-    }
+    if (gameState.obstacle.x < 20 || gameState.obstacle.x + gameState.obstacle.w > W - 20) gameState.obstacle.vx *= -1;
   }
-
-  if (gameState.ballInFlight && gameState.ball) {
-    stepGamePhysics(W, H);
-  } else if (gameState.ball && !gameState.ballInFlight) {
-    gameState.ballScale = 1.4;
-    gameState.ball.r = gameState.ball.baseR * gameState.ballScale;
-  }
-
+  if (gameState.ballInFlight && gameState.ball) stepGamePhysics(W, H);
+  else if (gameState.ball && !gameState.ballInFlight) { gameState.ballScale = 1.4; gameState.ball.r = gameState.ball.baseR * gameState.ballScale; }
   if (gameState.obstacle) drawObstacle(ctx, gameState.obstacle);
-  
   if (gameState.hoop) {
     drawNet(ctx, gameState.hoop);
     drawRimBack(ctx, gameState.hoop);
   }
-  
-  if (gameState.ball && gameState.hoop) {
-    const isBehindRim = gameState.ball.y < gameState.hoop.y;
-    if (isBehindRim) {
-      drawBall(ctx, gameState.ball);
-    }
-  }
-  
-  if (gameState.hoop) {
-    drawRimFront(ctx, gameState.hoop);
-  }
-  
-  if (gameState.ball && gameState.hoop) {
-    const isInFront = gameState.ball.y >= gameState.hoop.y;
-    if (isInFront) {
-      drawBall(ctx, gameState.ball);
-    }
-  }
-
-  if (gameState.dragging && !gameState.ballInFlight && gameState.ball) {
-    drawAimGuide(ctx);
-  }
-
+  if (gameState.ball && gameState.hoop && gameState.ball.y < gameState.hoop.y) drawBall(ctx, gameState.ball);
+  if (gameState.hoop) drawRimFront(ctx, gameState.hoop);
+  if (gameState.ball && gameState.hoop && gameState.ball.y >= gameState.hoop.y) drawBall(ctx, gameState.ball);
+  if (gameState.dragging && !gameState.ballInFlight && gameState.ball) drawAimGuide(ctx);
   gameAnimFrame = requestAnimationFrame(gameLoop);
 }
 
 function stepGamePhysics(W, H) {
-  const ball = gameState.ball;
-  const hoop = gameState.hoop;
-
-  const GRAVITY = 0.38;
-  const AIR_DRAG = 0.998;
-  const GROUND_BOUNCE = 0.45;
-  const WALL_BOUNCE = 0.55;
-  const RIM_BOUNCE = 0.48;
-  const RIM_FRICTION = 0.82;
-
+  const ball = gameState.ball, hoop = gameState.hoop;
+  const GRAVITY = 0.38, AIR_DRAG = 0.998, GROUND_BOUNCE = 0.45, WALL_BOUNCE = 0.55, RIM_BOUNCE = 0.48, RIM_FRICTION = 0.82;
   const prevY = ball.y;
-
-  ball.vx *= AIR_DRAG;
-  ball.vy += GRAVITY;
-
+  ball.vx *= AIR_DRAG; ball.vy += GRAVITY;
   const MAX_SPEED = 25;
   ball.vx = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, ball.vx));
   ball.vy = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, ball.vy));
-
-  ball.x += ball.vx;
-  ball.y += ball.vy;
-  ball.rot += ball.vx * 0.06;
-
+  ball.x += ball.vx; ball.y += ball.vy; ball.rot += ball.vx * 0.06;
   const heightRatio = Math.max(0, Math.min(1, (H - ball.y) / H));
   ball.r = ball.baseR * (0.85 + heightRatio * 0.25);
-
-  if (ball.y + ball.r >= H) {
-    ball.y = H - ball.r;
-    ball.vy = -ball.vy * GROUND_BOUNCE;
-    ball.vx *= 0.96;
-
-    if (Math.abs(ball.vy) < 1.2) {
-      resetGameBall(true);
-      return;
-    }
-  }
-
-  if (ball.x - ball.r <= 0) {
-    ball.x = ball.r;
-    ball.vx = Math.abs(ball.vx) * WALL_BOUNCE;
-  }
-
-  if (ball.x + ball.r >= W) {
-    ball.x = W - ball.r;
-    ball.vx = -Math.abs(ball.vx) * WALL_BOUNCE;
-  }
-
-  const rimPoints = [
-    { x: hoop.x - hoop.r, y: hoop.y },
-    { x: hoop.x + hoop.r, y: hoop.y }
-  ];
-
+  if (ball.y + ball.r >= H) { ball.y = H - ball.r; ball.vy = -ball.vy * GROUND_BOUNCE; ball.vx *= 0.96; if (Math.abs(ball.vy) < 1.2) { resetGameBall(true); return; } }
+  if (ball.x - ball.r <= 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx) * WALL_BOUNCE; }
+  if (ball.x + ball.r >= W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx) * WALL_BOUNCE; }
+  const rimPoints = [{ x: hoop.x - hoop.r, y: hoop.y }, { x: hoop.x + hoop.r, y: hoop.y }];
   const RIM_RADIUS = 8;
-
   rimPoints.forEach(rp => {
-    const dx = ball.x - rp.x;
-    const dy = ball.y - rp.y;
-    const dist = Math.hypot(dx, dy);
-
+    const dx = ball.x - rp.x, dy = ball.y - rp.y, dist = Math.hypot(dx, dy);
     if (dist < ball.r + RIM_RADIUS) {
       gameState.rimTouched = true;
-
-      const nx = dx / dist;
-      const ny = dy / dist;
-
-      const overlap = (ball.r + RIM_RADIUS) - dist;
-      ball.x += nx * overlap;
-      ball.y += ny * overlap;
-
+      const nx = dx / dist, ny = dy / dist, overlap = (ball.r + RIM_RADIUS) - dist;
+      ball.x += nx * overlap; ball.y += ny * overlap;
       const vdotn = ball.vx * nx + ball.vy * ny;
-
       if (vdotn < 0) {
         const imp = (1 + RIM_BOUNCE) * vdotn;
-        ball.vx -= imp * nx;
-        ball.vy -= imp * ny;
-
-        ball.vx *= RIM_FRICTION;
-        ball.vy *= RIM_FRICTION;
+        ball.vx -= imp * nx; ball.vy -= imp * ny;
+        ball.vx *= RIM_FRICTION; ball.vy *= RIM_FRICTION;
       }
     }
   });
-
-  const SCORE_TOP = hoop.y;
-  const SCORE_BOTTOM = hoop.y + hoop.r * 0.9;
-  const LEFT = hoop.x - hoop.r * 0.7;
-  const RIGHT = hoop.x + hoop.r * 0.7;
-
-  const wasAbove = prevY < SCORE_TOP;
-  const isBelow = ball.y > SCORE_TOP;
-  const isInside = ball.x > LEFT && ball.x < RIGHT;
-  const descending = ball.vy > 0;
-
-  if (gameState.hoopState === 'idle') {
-    if (wasAbove && isBelow && isInside && descending) {
-      gameState.hoopState = 'entered';
-    }
-  }
-
+  const SCORE_TOP = hoop.y, SCORE_BOTTOM = hoop.y + hoop.r * 0.9, LEFT = hoop.x - hoop.r * 0.7, RIGHT = hoop.x + hoop.r * 0.7;
+  const wasAbove = prevY < SCORE_TOP, isBelow = ball.y > SCORE_TOP, isInside = ball.x > LEFT && ball.x < RIGHT, descending = ball.vy > 0;
+  if (gameState.hoopState === 'idle' && wasAbove && isBelow && isInside && descending) gameState.hoopState = 'entered';
   if (gameState.hoopState === 'entered') {
     const pull = (hoop.x - ball.x) * 0.08;
-    ball.vx += pull;
-    ball.vx *= 0.98;
-    ball.vy += 0.05;
-
+    ball.vx += pull; ball.vx *= 0.98; ball.vy += 0.05;
     if (ball.y > SCORE_BOTTOM) {
       const stillInside = ball.x > hoop.x - hoop.r * 0.8 && ball.x < hoop.x + hoop.r * 0.8;
-
       if (stillInside) {
         const isPerfect = !gameState.rimTouched && Math.abs(ball.x - hoop.x) < hoop.r * 0.35;
         registerScore(isPerfect, hoop.x, hoop.y - 40);
         gameState.hoopState = 'scored';
-      } else {
-        gameState.hoopState = 'missed';
-        gameState.combo = 0;
-        updateComboDisplay();
-      }
+      } else { gameState.hoopState = 'missed'; gameState.combo = 0; updateComboDisplay(); }
     }
   }
-
-  if (gameState.hoopState !== 'idle' && gameState.hoopState !== 'scored') {
-    if (ball.y > hoop.y + hoop.r + 30) {
-      gameState.hoopState = 'idle';
-    }
-  }
-
-  if (ball.y > H + 150) {
-    if (gameState.hoopState !== 'scored') {
-      gameState.combo = 0;
-      updateComboDisplay();
-    }
-    resetGameBall(true);
-  }
+  if (gameState.hoopState !== 'idle' && gameState.hoopState !== 'scored' && ball.y > hoop.y + hoop.r + 30) gameState.hoopState = 'idle';
+  if (ball.y > H + 150) { if (gameState.hoopState !== 'scored') { gameState.combo = 0; updateComboDisplay(); } resetGameBall(true); }
 }
 
 function registerScore(isPerfect, popX, popY) {
@@ -2217,269 +2223,136 @@ function registerScore(isPerfect, popX, popY) {
   gameState.bestCombo = Math.max(gameState.bestCombo, gameState.combo);
   gameState.baskets++;
   if (isPerfect) gameState.perfect++;
-
   const pts = isPerfect ? 3 : 2;
   const comboMul = Math.min(gameState.combo, 4);
   gameState.score += pts * comboMul;
-
-  const scoreEl = document.getElementById('hud-score');
-  if (scoreEl) scoreEl.textContent = gameState.score;
-  
-  const phaseEl = document.getElementById('hud-phase');
-  if (phaseEl) phaseEl.textContent = `FASE ${gameState.phase}`;
-
+  document.getElementById('hud-score').textContent = gameState.score;
+  document.getElementById('hud-phase').textContent = `FASE ${gameState.phase}`;
   const comboEl = document.getElementById('hud-combo');
-  if (comboEl) {
-    if (gameState.combo >= 2) {
-      comboEl.textContent = `COMBO x${gameState.combo}!`;
-      comboEl.classList.add('visible');
-      spawnFlash();
-      setTimeout(() => comboEl.classList.remove('visible'), 1400);
-    } else {
-      comboEl.classList.remove('visible');
-    }
-  }
-
+  if (gameState.combo >= 2) { comboEl.textContent = `COMBO x${gameState.combo}!`; comboEl.classList.add('visible'); spawnFlash(); setTimeout(() => comboEl.classList.remove('visible'), 1400); } 
+  else { comboEl.classList.remove('visible'); }
+  if (gameState.combo >= 3) showFireBall(popX, popY);
   spawnScorePopup(popX, popY, isPerfect ? '✨ PERFEITA! +3' : `+${pts * comboMul}`, isPerfect ? 'plus3' : 'plus2');
   if (gameState.combo >= 2) spawnScorePopup(popX, popY - 44, `x${comboMul} COMBO!`, 'combo');
   spawnParticles(popX, popY + 40, 8);
-
+  playBasketSound(isPerfect);
+  if (gameState.combo >= 2) playComboSound(gameState.combo);
   if (navigator.vibrate) navigator.vibrate(isPerfect ? [50, 30, 50] : [30]);
-
-  setTimeout(() => {
-    resetGameBall(false);
-    gameState.hoopState = 'idle';
-    gameState.rimTouched = false;
-  }, 200);
+  setTimeout(() => { resetGameBall(false); gameState.hoopState = 'idle'; gameState.rimTouched = false; }, 200);
 }
 
 function updateComboDisplay() {
   const comboEl = document.getElementById('hud-combo');
   if (!comboEl) return;
-  
-  if (gameState.combo >= 2) {
-    comboEl.textContent = `COMBO x${gameState.combo}!`;
-    comboEl.classList.add('visible');
-  } else {
-    comboEl.classList.remove('visible');
-  }
+  if (gameState.combo >= 2) { comboEl.textContent = `COMBO x${gameState.combo}!`; comboEl.classList.add('visible'); } 
+  else { comboEl.classList.remove('visible'); }
 }
 
 function buildHistory() {
   const list = document.getElementById('history-list');
   if (!list) return;
-  
   list.innerHTML = '';
   const history = currentPlayerData.history || [];
-  if (history.length === 0) {
-    list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px;">Nenhuma partida ainda</div>';
-    return;
-  }
+  if (history.length === 0) { list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px;">Nenhuma partida ainda</div>'; return; }
   history.slice(0, 20).forEach(h => {
-    list.innerHTML += `
-      <div class="history-card">
-        <div class="history-date">${h.date}<br>${h.time || ''}</div>
-        <div class="rank-avatar avatar-g" style="width:36px;height:36px;font-size:14px;">${(currentPlayerData.displayName || PLAYERS[currentPlayer].name).charAt(0)}</div>
-        <div class="history-info"><div class="history-player">${currentPlayerData.displayName || PLAYERS[currentPlayer].name}</div><div class="history-details">${h.baskets} cestas · Fase ${h.phase}</div></div>
-        <div class="history-score">${h.score}</div>
-      </div>
-    `;
+    list.innerHTML += `<div class="history-card"><div class="history-date">${h.date}<br>${h.time || ''}</div><div class="rank-avatar avatar-g" style="width:36px;height:36px;font-size:14px;">${(currentPlayerData.displayName || PLAYERS[currentPlayer].name).charAt(0)}</div><div class="history-info"><div class="history-player">${currentPlayerData.displayName || PLAYERS[currentPlayer].name}</div><div class="history-details">${h.baskets} cestas · Fase ${h.phase}</div></div><div class="history-score">${h.score}</div></div>`;
   });
 }
 
-// ============================================================
-// DRAWING FUNCTIONS
-// ============================================================
 function drawCourt(ctx, W, H) {
-  ctx.fillStyle = '#07071a';
-  ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(255,255,255,0.035)';
-  ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 55) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-  }
-  for (let y = 0; y < H; y += 55) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
+  ctx.fillStyle = '#07071a'; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.035)'; ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 55) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 55) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 }
 
 function drawNet(ctx, h) {
   const { x, y, r } = h;
   for (let i = 0; i <= 8; i++) {
-    const t = i / 8;
-    const topX = x - r + 2 * r * t;
-    const botX = x + (topX - x) * 0.5;
-    ctx.beginPath();
-    ctx.moveTo(topX, y + 2);
-    ctx.lineTo(botX, y + r * 1.1);
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
+    const t = i / 8, topX = x - r + 2 * r * t, botX = x + (topX - x) * 0.5;
+    ctx.beginPath(); ctx.moveTo(topX, y + 2); ctx.lineTo(botX, y + r * 1.1);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 0.8; ctx.stroke();
   }
 }
 
 function drawRimBack(ctx, h) {
   const { x, y, r } = h;
-  ctx.beginPath();
-  ctx.ellipse(x, y, r * 0.92, r * 0.38, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = '#AA3300';
-  ctx.lineWidth = 3;
-  ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(x, y, r * 0.92, r * 0.38, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = '#AA3300'; ctx.lineWidth = 3; ctx.stroke();
 }
 
 function drawRimFront(ctx, h) {
   const { x, y, r } = h;
-  ctx.shadowColor = '#FF6B1A';
-  ctx.shadowBlur = 8;
-  ctx.beginPath();
-  ctx.ellipse(x, y, r, r * 0.42, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = '#E05000';
-  ctx.lineWidth = 5;
-  ctx.stroke();
-  [x - r, x + r].forEach(px => {
-    ctx.beginPath();
-    ctx.ellipse(px, y, 5, 3, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#CC3A00';
-    ctx.fill();
-  });
-  ctx.beginPath();
-  ctx.ellipse(x - r * 0.3, y - 2, r * 0.15, 3, 0, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(255,150,50,0.4)';
-  ctx.fill();
+  ctx.shadowColor = '#FF6B1A'; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.42, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = '#E05000'; ctx.lineWidth = 5; ctx.stroke();
+  [x - r, x + r].forEach(px => { ctx.beginPath(); ctx.ellipse(px, y, 5, 3, 0, 0, Math.PI * 2); ctx.fillStyle = '#CC3A00'; ctx.fill(); });
+  ctx.beginPath(); ctx.ellipse(x - r * 0.3, y - 2, r * 0.15, 3, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,150,50,0.4)'; ctx.fill();
   ctx.shadowBlur = 0;
 }
 
 function drawBall(ctx, ball) {
-  ctx.save();
-  ctx.translate(ball.x, ball.y);
-  ctx.rotate(ball.rot || 0);
+  ctx.save(); ctx.translate(ball.x, ball.y); ctx.rotate(ball.rot || 0);
   const grad = ctx.createRadialGradient(-ball.r * 0.25, -ball.r * 0.25, ball.r * 0.1, 0, 0, ball.r);
-  grad.addColorStop(0, '#FFB060');
-  grad.addColorStop(0.5, '#E86010');
-  grad.addColorStop(1, '#7A2000');
-  ctx.beginPath();
-  ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
-  ctx.fillStyle = grad;
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(-ball.r, 0);
-  ctx.lineTo(ball.r, 0);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(0, -ball.r);
-  ctx.quadraticCurveTo(ball.r * 0.45, 0, 0, ball.r);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(0, -ball.r);
-  ctx.quadraticCurveTo(-ball.r * 0.45, 0, 0, ball.r);
-  ctx.stroke();
+  grad.addColorStop(0, '#FFB060'); grad.addColorStop(0.5, '#E86010'); grad.addColorStop(1, '#7A2000');
+  ctx.beginPath(); ctx.arc(0, 0, ball.r, 0, Math.PI * 2); ctx.fillStyle = grad; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-ball.r, 0); ctx.lineTo(ball.r, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -ball.r); ctx.quadraticCurveTo(ball.r * 0.45, 0, 0, ball.r); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -ball.r); ctx.quadraticCurveTo(-ball.r * 0.45, 0, 0, ball.r); ctx.stroke();
   ctx.restore();
 }
 
 function drawObstacle(ctx, obs) {
   ctx.fillStyle = 'rgba(0,212,255,0.5)';
-  ctx.beginPath();
-  ctx.roundRect(obs.x, obs.y, obs.w, obs.h, 6);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,212,255,0.9)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(obs.x, obs.y, obs.w, obs.h, 6); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,212,255,0.9)'; ctx.lineWidth = 1.5; ctx.stroke();
 }
 
 function drawAimGuide(ctx) {
   if (!gameState.dragStart || !gameState.dragCurrent) return;
-  const ds = gameState.dragStart, dc = gameState.dragCurrent;
-  const dx = ds.x - dc.x, dy = ds.y - dc.y;
-  const dist = Math.min(Math.hypot(dx, dy), 220);
+  const ds = gameState.dragStart, dc = gameState.dragCurrent, dx = ds.x - dc.x, dy = ds.y - dc.y, dist = Math.min(Math.hypot(dx, dy), 220);
   if (dist < 10) return;
-  const angle = Math.atan2(dy, dx);
-  const speed = (dist / 220) * 28;
-
-  let bx = gameState.ball.x, by = gameState.ball.y;
-  let bvx = Math.cos(angle) * speed;
-  let bvy = Math.sin(angle) * speed;
-
-  for (let i = 0; i < 30; i++) {
-    bvx *= 0.998;
-    bvy += 0.38;
-    bx += bvx;
-    by += bvy;
-    ctx.beginPath();
-    ctx.arc(bx, by, 3 * (1 - i / 30), 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - i / 30)})`;
-    ctx.fill();
-  }
-
+  const angle = Math.atan2(dy, dx), speed = (dist / 220) * 28;
+  let bx = gameState.ball.x, by = gameState.ball.y, bvx = Math.cos(angle) * speed, bvy = Math.sin(angle) * speed;
+  for (let i = 0; i < 30; i++) { bvx *= 0.998; bvy += 0.38; bx += bvx; by += bvy; ctx.beginPath(); ctx.arc(bx, by, 3 * (1 - i / 30), 0, Math.PI * 2); ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - i / 30)})`; ctx.fill(); }
   const pct = dist / 220;
-  ctx.beginPath();
-  ctx.arc(gameState.ball.x, gameState.ball.y, gameState.ball.r + 8,
-          -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
-  ctx.strokeStyle = pct < 0.5 ? '#00D4FF' : (pct < 0.8 ? '#FFCC00' : '#FF4400');
-  ctx.lineWidth = 3;
-  ctx.stroke();
+  ctx.beginPath(); ctx.arc(gameState.ball.x, gameState.ball.y, gameState.ball.r + 8, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+  ctx.strokeStyle = pct < 0.5 ? '#00D4FF' : (pct < 0.8 ? '#FFCC00' : '#FF4400'); ctx.lineWidth = 3; ctx.stroke();
 }
 
-// ============================================================
-// EFFECTS
-// ============================================================
 function spawnParticles(x, y, count = 6) {
-  for (let i = 0; i < count; i++) {
-    const el = document.createElement('div');
-    el.className = 'particle';
-    el.textContent = ['🏀', '✨', '⭐', '💥', '🔥'][Math.floor(Math.random() * 5)];
-    el.style.left = (x - 15 + Math.random() * 30) + 'px';
-    el.style.top = (y + Math.random() * 20) + 'px';
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 800);
-  }
+  for (let i = 0; i < count; i++) { const el = document.createElement('div'); el.className = 'particle'; el.textContent = ['🏀', '✨', '⭐', '💥', '🔥'][Math.floor(Math.random() * 5)]; el.style.left = (x - 15 + Math.random() * 30) + 'px'; el.style.top = (y + Math.random() * 20) + 'px'; document.body.appendChild(el); setTimeout(() => el.remove(), 800); }
 }
 
 function spawnScorePopup(x, y, text, cls) {
-  const el = document.createElement('div');
-  el.className = 'score-popup ' + cls;
-  el.textContent = text;
-  el.style.left = (x - 60) + 'px';
-  el.style.top = (y - 30) + 'px';
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 900);
+  const el = document.createElement('div'); el.className = 'score-popup ' + cls; el.textContent = text;
+  el.style.left = (x - 60) + 'px'; el.style.top = (y - 30) + 'px'; document.body.appendChild(el); setTimeout(() => el.remove(), 900);
 }
 
-function spawnFlash() {
-  const el = document.createElement('div');
-  el.className = 'combo-flash';
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 350);
-}
+function spawnFlash() { const el = document.createElement('div'); el.className = 'combo-flash'; document.body.appendChild(el); setTimeout(() => el.remove(), 350); }
 
 function showPhaseBanner(phase) {
-  const banner = document.getElementById('phase-banner');
-  if (!banner) return;
-  const bannerNum = document.getElementById('phase-banner-num');
-  if (bannerNum) bannerNum.textContent = phase;
-  banner.classList.add('show');
-  setTimeout(() => banner.classList.remove('show'), 1700);
+  playPhaseUpSound();
+  const banner = document.getElementById('phase-banner'); if (!banner) return;
+  document.getElementById('phase-banner-num').textContent = phase;
+  banner.classList.add('show'); setTimeout(() => banner.classList.remove('show'), 1700);
 }
 
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2500);
-}
+function showToast(msg) { const el = document.getElementById('toast'); if (!el) return; el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2500); }
 
 // ============================================================
 // EVENT BINDINGS
 // ============================================================
-document.querySelectorAll('.player-btn').forEach(btn => {
-  btn.addEventListener('click', () => selectPlayer(btn));
+document.querySelectorAll('.player-btn').forEach(btn => btn.addEventListener('click', () => selectPlayer(btn)));
+document.querySelectorAll('.num-btn[data-num]').forEach(btn => btn.addEventListener('click', () => {
+  if (currentScreen === 'login') pinInput(btn.dataset.num);
+  else if (currentScreen === 'change-pin') changePinInput(btn.dataset.num);
+}));
+document.querySelector('.num-btn.del')?.addEventListener('click', () => {
+  if (currentScreen === 'login') pinDelete();
+  else if (currentScreen === 'change-pin') changePinDelete();
 });
-document.querySelectorAll('.num-btn[data-num]').forEach(btn => {
-  btn.addEventListener('click', () => pinInput(btn.dataset.num));
-});
-document.querySelector('.num-btn.del')?.addEventListener('click', () => pinDelete());
 document.getElementById('btn-login')?.addEventListener('click', () => doLogin());
 document.getElementById('btn-startgame')?.addEventListener('click', () => startGame());
 document.getElementById('btn-ranking')?.addEventListener('click', () => showScreen('ranking'));
@@ -2494,57 +2367,42 @@ document.getElementById('back-ranking')?.addEventListener('click', () => goBack(
 document.getElementById('back-profile')?.addEventListener('click', () => goBack());
 document.getElementById('back-history')?.addEventListener('click', () => goBack());
 document.getElementById('back-profile-edit')?.addEventListener('click', () => goBack());
+document.getElementById('back-change-pin')?.addEventListener('click', () => goBack());
 document.getElementById('btn-save-profile')?.addEventListener('click', () => saveProfile());
 document.getElementById('btn-cancel-edit')?.addEventListener('click', () => cancelEdit());
 document.getElementById('btn-back-to-menu')?.addEventListener('click', () => showScreen('menu'));
+document.getElementById('btn-change-pin-menu')?.addEventListener('click', () => startChangePin());
+document.getElementById('btn-change-pin')?.addEventListener('click', () => confirmChangePin());
 document.getElementById('edit-profile-trigger')?.addEventListener('click', () => showProfileEdit());
 document.getElementById('menu-avatar-click')?.addEventListener('click', () => showProfileEdit());
-document.getElementById('btn-upload-photo')?.addEventListener('click', () => {
-  document.getElementById('photo-input')?.click();
-});
-document.getElementById('photo-input')?.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  
-  showToast('📤 Enviando foto...');
-  await uploadPhoto(file);
-});
+document.getElementById('btn-upload-photo')?.addEventListener('click', () => document.getElementById('photo-input')?.click());
+document.getElementById('photo-input')?.addEventListener('change', async (e) => { const file = e.target.files[0]; if (file) { showToast('📤 Enviando foto...'); await uploadPhoto(file); } });
+document.getElementById('sound-toggle')?.addEventListener('click', () => toggleSound());
 
 window.addEventListener('resize', () => {
   if (currentScreen === 'game' && gameState.ball) {
     const canvas = document.getElementById('game-canvas');
     if (!canvas) return;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     gameState.ballOrigin = { x: window.innerWidth / 2, y: window.innerHeight * 0.72 };
     gameState.ballBaseR = Math.min(32, window.innerWidth * 0.09);
-    gameState.hoopR = Math.min(58, window.innerWidth * 0.13);
+    gameState.hoopR = Math.min(58, window.innerWidth * 0.13) * (gameState.phaseData.hoopScale || 1.0);
     resetGameBall(false);
     resetGameHoop();
   }
 });
 document.addEventListener('contextmenu', e => e.preventDefault());
 
-// Inicialização
 console.log('🚀 App inicializado!');
-if (firebaseReady) {
-  setTimeout(() => escutarRanking(), 100);
-}
+if (firebaseReady) setTimeout(() => escutarRanking(), 100);
 
-// RoundRect helper
 if (!CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
-    if (w < 2 * r) r = w / 2;
-    if (h < 2 * r) r = h / 2;
-    this.moveTo(x+r, y);
-    this.lineTo(x+w-r, y);
-    this.quadraticCurveTo(x+w, y, x+w, y+r);
-    this.lineTo(x+w, y+h-r);
-    this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-    this.lineTo(x+r, y+h);
-    this.quadraticCurveTo(x, y+h, x, y+h-r);
-    this.lineTo(x, y+r);
-    this.quadraticCurveTo(x, y, x+r, y);
+    if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
+    this.moveTo(x+r, y); this.lineTo(x+w-r, y); this.quadraticCurveTo(x+w, y, x+w, y+r);
+    this.lineTo(x+w, y+h-r); this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    this.lineTo(x+r, y+h); this.quadraticCurveTo(x, y+h, x, y+h-r);
+    this.lineTo(x, y+r); this.quadraticCurveTo(x, y, x+r, y);
     return this;
   };
 }
